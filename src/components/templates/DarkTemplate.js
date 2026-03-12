@@ -78,12 +78,12 @@ const DarkTemplate = ({ userData, data }) => {
       </View>
 
       <View style={styles.fieldsContainer}>
-        <ExpandableField label="Name" value={d?.name || '-'} fieldKey="name" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={styles.value} />
+        <ExpandableField label="Name" value={d?.name || '-'} fieldKey="name" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={[styles.value, styles.nameValue]} />
         {d?.designation ? (
-          <ExpandableField label="Designation" value={d.designation} fieldKey="designation" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={styles.value} />
+          <ExpandableField label="Designation" value={d.designation} fieldKey="designation" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={[styles.value, styles.designationValue]} />
         ) : null}
         {d?.companyName ? (
-          <ExpandableField label="Company Name" value={d.companyName} fieldKey="companyName" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={styles.value} />
+          <ExpandableField label="Company Name" value={d.companyName} fieldKey="companyName" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={[styles.value, styles.companyValue]} />
         ) : null}
         {d?.businessCategory || d?.category ? (
           <ExpandableField label="Business Category" value={d.businessCategory || d.category} fieldKey="businessCategory" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={styles.value} />
@@ -131,7 +131,7 @@ const DarkTemplate = ({ userData, data }) => {
         {d?.address ? (<TouchableOpacity onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.address)}`)} style={styles.iconBtn}><Ionicons name="location" size={18} color={DARK_ACCENT} /></TouchableOpacity>) : null}
       </View>
       <TouchableOpacity onPress={toggleExpanded} activeOpacity={0.85} style={{ marginTop: 12, alignSelf: 'stretch', paddingVertical: 10, alignItems: 'center' }}>
-        <Text style={{ color: DARK_TEXT, fontWeight: '700' }}>{expanded ? 'Show Less' : 'More'}</Text>
+        <Text style={{ color: DARK_TEXT, fontWeight: '700', fontSize: 15 }}>{expanded ? 'Show Less' : 'More'}</Text>
       </TouchableOpacity>
       {/* visiting card removed */}
     </View>
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 32,
+    fontSize: 34,
     color: DARK_ACCENT,
     fontWeight: "bold",
   },
@@ -300,12 +300,24 @@ const styles = StyleSheet.create({
   label: {
     color: DARK_TEXT,
     fontWeight: '700',
-    fontSize: 12,
+    fontSize: 14,
   },
   value: {
     color: DARK_TEXT,
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  nameValue: {
+    fontSize: 18,
+    lineHeight: 22,
+  },
+  designationValue: {
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  companyValue: {
+    fontSize: 16,
+    lineHeight: 20,
   },
   scannedCard: {
     width: '100%',

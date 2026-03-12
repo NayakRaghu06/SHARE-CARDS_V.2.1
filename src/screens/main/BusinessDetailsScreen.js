@@ -154,12 +154,12 @@ export default function BusinessDetailsScreen({ route, navigation }) {
     const businessDescription = String(form.businessDescription || '').trim();
     const companyNameAllowed = /^[A-Za-z0-9 .&'-]+$/;
 
-    if (!companyName) {
-      newErrors.companyName = 'Company name is required';
-    } else if (companyName.length < 2) {
-      newErrors.companyName = 'Company name must be at least 2 characters';
-    } else if (!companyNameAllowed.test(companyName)) {
-      newErrors.companyName = "Company name contains invalid characters";
+    if (companyName) {
+      if (companyName.length < 2) {
+        newErrors.companyName = 'Company name must be at least 2 characters';
+      } else if (!companyNameAllowed.test(companyName)) {
+        newErrors.companyName = "Company name contains invalid characters";
+      }
     }
 
     if (businessCategory && businessCategory.length < 2) {
@@ -408,7 +408,7 @@ export default function BusinessDetailsScreen({ route, navigation }) {
                   <View style={businessDetailsStyles.labelLeft}>
                     <Text style={businessDetailsStyles.label}>
                       Company Name
-                      <Text style={businessDetailsStyles.star}> *</Text>
+                      <Text style={businessDetailsStyles.optionalLabel}> (optional)</Text>
                     </Text>
                   </View>
                   {errors.companyName && (

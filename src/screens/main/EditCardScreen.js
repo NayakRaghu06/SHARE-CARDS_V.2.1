@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,14 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Dimensions,
   Alert,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { apiFetch } from '../../utils/api';
 import AppHeader from '../../components/common/AppHeader';
+import FS from '../../styles/typography';
 
 export default function EditCardScreen({ route, navigation }) {
   const { cardData } = route.params;
@@ -22,7 +24,7 @@ export default function EditCardScreen({ route, navigation }) {
   const [name, setName] = useState(cardData.name || '');
   const [companyName, setCompanyName] = useState(cardData.companyName || '');
   const [designation, setDesignation] = useState(cardData.designation || '');
-  const phone = cardData.phoneNumber || cardData.phone || '';
+  const phone = cardData.phoneNumber || cardData.phone || cardData.mobileNumber || '';
   const [email, setEmail] = useState(cardData.email || '');
   const [address, setAddress] = useState(cardData.address || '');
   const [searchKeywords, setSearchKeywords] = useState(cardData.keywords || cardData.searchKeywords || '');
@@ -36,6 +38,8 @@ export default function EditCardScreen({ route, navigation }) {
   const [twitter, setTwitter] = useState(cardData.twitter || '');
   const [facebook, setFacebook] = useState(cardData.facebook || '');
   const [website, setWebsite] = useState(cardData.website || '');
+  const [focusedField, setFocusedField] = useState(null);
+  const btnScale = useRef(new Animated.Value(1)).current;
 
   const handleUpdate = async () => {
     try {
@@ -75,11 +79,25 @@ export default function EditCardScreen({ route, navigation }) {
   };
 
   const firstLetter = name && name.length > 0 ? name.trim().charAt(0).toUpperCase() : 'N';
+
+  const animatePressIn = () =>
+    Animated.spring(btnScale, { toValue: 0.97, useNativeDriver: true, speed: 25, bounciness: 0 }).start();
+  const animatePressOut = () =>
+    Animated.spring(btnScale, { toValue: 1, useNativeDriver: true, speed: 24, bounciness: 5 }).start();
+
+  const F = focusedField;
+
+  const Icon = ({ name, multiline }) => (
+    <View style={[styles.iconWrapper, multiline && { alignSelf: 'flex-start', marginTop: 2 }]}>
+      <Ionicons name={name} size={17} color="#D4AF37" />
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <AppHeader />
 
-      {/* Avatar Preview */}
+      {/* Avatar */}
       <View style={styles.avatarContainer}>
         <View style={styles.avatarCircle}>
           <Text style={styles.avatarLetter}>{firstLetter}</Text>
@@ -96,178 +114,257 @@ export default function EditCardScreen({ route, navigation }) {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.cardContainer}>
-            {/* Section Title */}
-            <Text style={styles.sectionTitle}>Personal Details</Text>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Name</Text>
-              <TextInput value={name} onChangeText={setName} style={styles.input} />
-              <Text style={styles.label}>Company Name</Text>
-              <TextInput value={companyName} onChangeText={setCompanyName} style={styles.input} />
-              <Text style={styles.label}>Designation</Text>
-              <TextInput value={designation} onChangeText={setDesignation} style={styles.input} />
-              <Text style={styles.label}>Phone</Text>
-              <TextInput
-                value={phone}
-                editable={false}
-                style={[styles.input, styles.inputDisabled]}
-                keyboardType="phone-pad"
-              />
-              <Text style={styles.label}>Email</Text>
-              <TextInput value={email} onChangeText={setEmail} style={styles.input} keyboardType="email-address" />
-              <Text style={styles.label}>Address</Text>
-              <TextInput value={address} onChangeText={setAddress} style={styles.input} />
+          {/* ── Personal Details ── */}
+          <View style={styles.formCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Personal Details</Text>
+              <View style={styles.sectionUnderline} />
             </View>
 
-            {/* Section Title */}
-            <Text style={styles.sectionTitle}>Business Details</Text>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Search Keywords</Text>
-              <TextInput value={searchKeywords} onChangeText={setSearchKeywords} style={styles.input} />
-              <Text style={styles.label}>Business Category</Text>
-              <TextInput value={businessCategory} onChangeText={setBusinessCategory} style={styles.input} />
-              <Text style={styles.label}>Business Sub-Category</Text>
-              <TextInput value={businessSubCategory} onChangeText={setBusinessSubCategory} style={styles.input} />
-              <Text style={styles.label}>Clients</Text>
-              <TextInput value={clients} onChangeText={setClients} style={styles.input} />
-              <Text style={styles.label}>Description</Text>
-              <TextInput value={description} onChangeText={setDescription} style={[styles.input, { minHeight: 60 }]} multiline />
+            <View style={[styles.inputRow, F === 'name' && styles.inputRowFocused]}>
+              <Icon name="person" />
+              <TextInput style={styles.inputText} value={name} onChangeText={setName} placeholder="Name" placeholderTextColor="#9CA3AF" onFocus={() => setFocusedField('name')} onBlur={() => setFocusedField(null)} />
             </View>
 
-            {/* Section Title */}
-            <Text style={styles.sectionTitle}>Social Media</Text>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>WhatsApp</Text>
-              <TextInput value={whatsapp} onChangeText={setWhatsapp} style={styles.input} />
-              <Text style={styles.label}>LinkedIn</Text>
-              <TextInput value={linkedin} onChangeText={setLinkedin} style={styles.input} />
-              <Text style={styles.label}>Instagram</Text>
-              <TextInput value={instagram} onChangeText={setInstagram} style={styles.input} />
-              <Text style={styles.label}>Twitter</Text>
-              <TextInput value={twitter} onChangeText={setTwitter} style={styles.input} />
-              <Text style={styles.label}>Facebook</Text>
-              <TextInput value={facebook} onChangeText={setFacebook} style={styles.input} />
-              <Text style={styles.label}>Website</Text>
-              <TextInput value={website} onChangeText={setWebsite} style={styles.input} />
+            <View style={[styles.inputRow, F === 'company' && styles.inputRowFocused]}>
+              <Icon name="business" />
+              <TextInput style={styles.inputText} value={companyName} onChangeText={setCompanyName} placeholder="Company Name" placeholderTextColor="#9CA3AF" onFocus={() => setFocusedField('company')} onBlur={() => setFocusedField(null)} />
+            </View>
+
+            <View style={[styles.inputRow, F === 'designation' && styles.inputRowFocused]}>
+              <Icon name="briefcase" />
+              <TextInput style={styles.inputText} value={designation} onChangeText={setDesignation} placeholder="Designation" placeholderTextColor="#9CA3AF" onFocus={() => setFocusedField('designation')} onBlur={() => setFocusedField(null)} />
+            </View>
+
+            <View style={[styles.inputRow, styles.inputRowDisabled]}>
+              <Icon name="call" />
+              <TextInput style={[styles.inputText, styles.inputTextDisabled]} value={phone} editable={false} placeholder="Phone" placeholderTextColor="#CBD5E1" keyboardType="phone-pad" />
+            </View>
+
+            <View style={[styles.inputRow, F === 'email' && styles.inputRowFocused]}>
+              <Icon name="mail" />
+              <TextInput style={styles.inputText} value={email} onChangeText={setEmail} placeholder="Email" placeholderTextColor="#9CA3AF" keyboardType="email-address" onFocus={() => setFocusedField('email')} onBlur={() => setFocusedField(null)} />
+            </View>
+
+            <View style={[styles.inputRow, F === 'address' && styles.inputRowFocused]}>
+              <Icon name="location" />
+              <TextInput style={styles.inputText} value={address} onChangeText={setAddress} placeholder="Address" placeholderTextColor="#9CA3AF" onFocus={() => setFocusedField('address')} onBlur={() => setFocusedField(null)} />
+            </View>
+          </View>
+
+          {/* ── Business Details ── */}
+          <View style={styles.formCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Business Details</Text>
+              <View style={styles.sectionUnderline} />
+            </View>
+
+            <View style={[styles.inputRow, F === 'keywords' && styles.inputRowFocused]}>
+              <Icon name="search" />
+              <TextInput style={styles.inputText} value={searchKeywords} onChangeText={setSearchKeywords} placeholder="Search Keywords" placeholderTextColor="#9CA3AF" onFocus={() => setFocusedField('keywords')} onBlur={() => setFocusedField(null)} />
+            </View>
+
+            <View style={[styles.inputRow, F === 'category' && styles.inputRowFocused]}>
+              <Icon name="pricetag" />
+              <TextInput style={styles.inputText} value={businessCategory} onChangeText={setBusinessCategory} placeholder="Business Category" placeholderTextColor="#9CA3AF" onFocus={() => setFocusedField('category')} onBlur={() => setFocusedField(null)} />
+            </View>
+
+            <View style={[styles.inputRow, F === 'subcat' && styles.inputRowFocused]}>
+              <Icon name="layers" />
+              <TextInput style={styles.inputText} value={businessSubCategory} onChangeText={setBusinessSubCategory} placeholder="Business Sub-Category" placeholderTextColor="#9CA3AF" onFocus={() => setFocusedField('subcat')} onBlur={() => setFocusedField(null)} />
+            </View>
+
+            <View style={[styles.inputRow, F === 'clients' && styles.inputRowFocused]}>
+              <Icon name="people" />
+              <TextInput style={styles.inputText} value={clients} onChangeText={setClients} placeholder="Clients" placeholderTextColor="#9CA3AF" onFocus={() => setFocusedField('clients')} onBlur={() => setFocusedField(null)} />
+            </View>
+
+            <View style={[styles.inputRow, styles.inputRowMultiline, F === 'description' && styles.inputRowFocused]}>
+              <Icon name="document-text" multiline />
+              <TextInput style={[styles.inputText, { minHeight: 60 }]} value={description} onChangeText={setDescription} placeholder="Description" placeholderTextColor="#9CA3AF" multiline onFocus={() => setFocusedField('description')} onBlur={() => setFocusedField(null)} />
+            </View>
+          </View>
+
+          {/* ── Social Media ── */}
+          <View style={styles.formCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Social Media</Text>
+              <View style={styles.sectionUnderline} />
+            </View>
+
+            <View style={[styles.inputRow, F === 'whatsapp' && styles.inputRowFocused]}>
+              <Icon name="logo-whatsapp" />
+              <TextInput style={styles.inputText} value={whatsapp} onChangeText={setWhatsapp} placeholder="WhatsApp" placeholderTextColor="#9CA3AF" onFocus={() => setFocusedField('whatsapp')} onBlur={() => setFocusedField(null)} />
+            </View>
+
+            <View style={[styles.inputRow, F === 'linkedin' && styles.inputRowFocused]}>
+              <Icon name="logo-linkedin" />
+              <TextInput style={styles.inputText} value={linkedin} onChangeText={setLinkedin} placeholder="LinkedIn" placeholderTextColor="#9CA3AF" onFocus={() => setFocusedField('linkedin')} onBlur={() => setFocusedField(null)} />
+            </View>
+
+            <View style={[styles.inputRow, F === 'instagram' && styles.inputRowFocused]}>
+              <Icon name="logo-instagram" />
+              <TextInput style={styles.inputText} value={instagram} onChangeText={setInstagram} placeholder="Instagram" placeholderTextColor="#9CA3AF" onFocus={() => setFocusedField('instagram')} onBlur={() => setFocusedField(null)} />
+            </View>
+
+            <View style={[styles.inputRow, F === 'twitter' && styles.inputRowFocused]}>
+              <Icon name="logo-twitter" />
+              <TextInput style={styles.inputText} value={twitter} onChangeText={setTwitter} placeholder="Twitter" placeholderTextColor="#9CA3AF" onFocus={() => setFocusedField('twitter')} onBlur={() => setFocusedField(null)} />
+            </View>
+
+            <View style={[styles.inputRow, F === 'facebook' && styles.inputRowFocused]}>
+              <Icon name="logo-facebook" />
+              <TextInput style={styles.inputText} value={facebook} onChangeText={setFacebook} placeholder="Facebook" placeholderTextColor="#9CA3AF" onFocus={() => setFocusedField('facebook')} onBlur={() => setFocusedField(null)} />
+            </View>
+
+            <View style={[styles.inputRow, F === 'website' && styles.inputRowFocused]}>
+              <Icon name="globe" />
+              <TextInput style={styles.inputText} value={website} onChangeText={setWebsite} placeholder="Website" placeholderTextColor="#9CA3AF" onFocus={() => setFocusedField('website')} onBlur={() => setFocusedField(null)} />
             </View>
           </View>
         </ScrollView>
 
         {/* Sticky Update Button */}
         <View style={styles.stickyButtonContainer}>
-          <TouchableOpacity style={styles.updateBtn} onPress={handleUpdate}>
-            <Text style={styles.updateBtnText}>Update Card</Text>
-          </TouchableOpacity>
+          <Animated.View style={{ transform: [{ scale: btnScale }] }}>
+            <TouchableOpacity
+              style={styles.updateBtn}
+              onPress={handleUpdate}
+              onPressIn={animatePressIn}
+              onPressOut={animatePressOut}
+              activeOpacity={1}
+            >
+              <Text style={styles.updateBtnText}>Update Card</Text>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const GOLD = '#D4AF37';
-const SOFT_BG = '#F8F8F8';
-const CARD_RADIUS = 18;
-const INPUT_RADIUS = 15;
-const SHADOW = {
-  shadowColor: GOLD,
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.15,
-  shadowRadius: 8,
-  elevation: 6,
-};
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: SOFT_BG,
+    backgroundColor: '#F8FAFC',
   },
   avatarContainer: {
     alignItems: 'center',
-    marginTop: 18,
-    marginBottom: 10,
+    marginTop: 16,
+    marginBottom: 14,
   },
   avatarCircle: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: GOLD,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#0F172A',
+    borderWidth: 3,
+    borderColor: '#D4AF37',
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOW,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
   avatarLetter: {
-    fontSize: 32,
-    color: '#fff',
-    fontWeight: 'bold',
-    letterSpacing: 2,
+    color: '#D4AF37',
+    fontSize: FS.display,
+    fontWeight: '800',
   },
   scrollContent: {
-    paddingBottom: 120,
-    paddingHorizontal: 16,
+    paddingBottom: 110,
+    paddingHorizontal: 14,
+    paddingTop: 4,
   },
-  cardContainer: {
-    backgroundColor: '#fff',
-    borderRadius: CARD_RADIUS,
-    padding: 20,
-    ...SHADOW,
-    marginBottom: 24,
+  formCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingVertical: 22,
+    paddingHorizontal: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    marginBottom: 16,
+  },
+  sectionHeader: {
+    marginBottom: 4,
   },
   sectionTitle: {
-    fontSize: 18,
-    color: GOLD,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    marginTop: 8,
-    letterSpacing: 0.5,
+    fontSize: FS.h4,
+    fontWeight: '700',
+    color: '#0F172A',
   },
-  inputGroup: {
-    marginBottom: 18,
+  sectionUnderline: {
+    height: 3,
+    width: 42,
+    backgroundColor: '#D4AF37',
+    borderRadius: 2,
+    marginTop: 6,
+    marginBottom: 16,
   },
-  label: {
-    fontSize: 15,
-    color: GOLD,
-    marginBottom: 6,
-    marginTop: 8,
-    fontWeight: '600',
-  },
-  input: {
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: GOLD,
-    borderRadius: INPUT_RADIUS,
-    padding: 12,
-    marginBottom: 10,
-    backgroundColor: SOFT_BG,
-    fontSize: 15,
-    color: '#222',
+    borderColor: '#E5E7EB',
   },
-  inputDisabled: {
-    backgroundColor: '#f0f0f0',
-    color: '#888',
-    borderColor: '#e0e0e0',
+  inputRowFocused: {
+    borderColor: '#D4AF37',
+    backgroundColor: '#FFFFFF',
+  },
+  inputRowDisabled: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#E5E7EB',
+    opacity: 0.7,
+  },
+  inputRowMultiline: {
+    alignItems: 'flex-start',
+  },
+  iconWrapper: {
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inputText: {
+    flex: 1,
+    fontSize: FS.lg,
+    color: '#111827',
+    padding: 0,
+  },
+  inputTextDisabled: {
+    color: '#94A3B8',
   },
   stickyButtonContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'transparent',
-    padding: 16,
-    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F8FAFC',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
   },
   updateBtn: {
-    backgroundColor: GOLD,
+    backgroundColor: '#D4AF37',
+    borderRadius: 16,
     paddingVertical: 16,
-    paddingHorizontal: 40,
-    borderRadius: 24,
     alignItems: 'center',
-    ...SHADOW,
-    width: Dimensions.get('window').width - 32,
-    maxWidth: 500,
+    shadowColor: '#D4AF37',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
   },
   updateBtnText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    letterSpacing: 1,
+    color: '#0F172A',
+    fontSize: FS.xl,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });

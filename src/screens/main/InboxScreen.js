@@ -16,8 +16,9 @@ import { apiFetch, saveCard } from '../../utils/api';
 import websocketService from '../../utils/websocketService';
 import AppHeader from '../../components/common/AppHeader';
 import AnimatedCard from '../../components/common/AnimatedCard';
+import FS from '../../styles/typography';
 
-const GOLD = '#C9A227';
+const GOLD = '#D4AF37';
 
 // ── Normalize card fields so shareVCard + CardDetailsScreen both work ─────────
 // Backend returns: phoneNumber, whatsappUrl, businessSubcategory
@@ -49,10 +50,10 @@ const EmptyState = () => {
     <Animated.View style={[emptyStyles.wrap, { opacity }]}>
       <Animated.View style={{ transform: [{ translateY: bounce }] }}>
         <View style={emptyStyles.iconCircle}>
-          <Ionicons name="mail-open-outline" size={46} color={GOLD} />
+          <Ionicons name="mail-open-outline" size={46} color="#CBD5E1" />
         </View>
       </Animated.View>
-      <Text style={emptyStyles.title}>No cards received yet</Text>
+      <Text style={emptyStyles.title}>No shared cards yet</Text>
       <Text style={emptyStyles.subtitle}>
         When someone shares a card with you it will appear here.
       </Text>
@@ -63,13 +64,12 @@ const EmptyState = () => {
 const emptyStyles = StyleSheet.create({
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 36, paddingTop: 60 },
   iconCircle: {
-    width: 100, height: 100, borderRadius: 50, backgroundColor: '#FDF6E3',
+    width: 100, height: 100, borderRadius: 50, backgroundColor: '#F1F5F9',
     alignItems: 'center', justifyContent: 'center', borderWidth: 1.5,
-    borderColor: '#F3E9D2', marginBottom: 24, shadowColor: GOLD,
-    shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3,
+    borderColor: '#E2E8F0', marginBottom: 24,
   },
-  title:    { fontSize: 18, fontWeight: '700', color: '#1A1A1A', marginBottom: 8, textAlign: 'center' },
-  subtitle: { fontSize: 14, color: '#888', textAlign: 'center', lineHeight: 21 },
+  title:    { fontSize: FS.h4, fontWeight: '700', color: '#94A3B8', marginBottom: 8, textAlign: 'center' },
+  subtitle: { fontSize: FS.md, color: '#94A3B8', textAlign: 'center', lineHeight: 21 },
 });
 
 // ── Main screen ───────────────────────────────────────────────────────────────
@@ -268,7 +268,9 @@ function InboxScreen({ navigation }) {
         {/* Top row */}
         <TouchableOpacity style={styles.cardRow} onPress={() => handleOpen(item)} activeOpacity={0.85}>
           <View style={[styles.avatarWrap, !item.viewedAt && styles.avatarWrapUnread]}>
-            <Ionicons name="person-circle" size={46} color={GOLD} />
+            <View style={styles.avatarCircle}>
+              <Ionicons name="person" size={24} color="#D4AF37" />
+            </View>
             {!item.viewedAt && <View style={styles.unreadDot} />}
           </View>
 
@@ -308,6 +310,9 @@ function InboxScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       <AppHeader />
+      <View style={styles.titleWrap}>
+        <Text style={styles.screenTitle}>  </Text>
+      </View>
       {newArrivalCount > 0 && (
         <Animated.View style={[styles.liveBadge, { transform: [{ scale: badgeScale }] }]}>
           <Ionicons name="notifications" size={14} color="#fff" />
@@ -337,42 +342,72 @@ function InboxScreen({ navigation }) {
 export default InboxScreen;
 
 const styles = StyleSheet.create({
-  container:        { flex: 1, backgroundColor: '#FAFAFA' },
-  listContent:      { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 32 },
+  container:        { flex: 1, backgroundColor: '#F8FAFC' },
+  listContent:      { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 },
   listContentEmpty: { flexGrow: 1 },
 
+  titleWrap: {
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  screenTitle: {
+    fontSize: FS.h3,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 6,
+  },
+  titleAccent: {
+    height: 3,
+    width: 40,
+    backgroundColor: '#D4AF37',
+    borderRadius: 2,
+  },
+
   card: {
-    backgroundColor: '#fff', borderRadius: 14, paddingVertical: 14,
-    paddingHorizontal: 16, marginBottom: 12, borderWidth: 1,
-    borderColor: '#F0EADA', shadowColor: '#000', shadowOpacity: 0.06,
-    shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+    overflow: 'hidden',
   },
-  cardUnread:   { borderColor: GOLD, borderWidth: 1.5, backgroundColor: '#FFFDF5' },
-  cardRow:      { flexDirection: 'row', alignItems: 'center' },
-  avatarWrap:   { marginRight: 12, position: 'relative' },
+  cardUnread:       { borderWidth: 1.5, borderColor: GOLD },
+  cardRow:          { flexDirection: 'row', alignItems: 'center', padding: 18 },
+  avatarWrap:       { marginRight: 14, position: 'relative' },
   avatarWrapUnread: {},
+  avatarCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#1E293B',
+    borderWidth: 2,
+    borderColor: GOLD,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   unreadDot: {
-    position: 'absolute', top: 2, right: 2, width: 10, height: 10,
-    borderRadius: 5, backgroundColor: GOLD, borderWidth: 1.5, borderColor: '#fff',
+    position: 'absolute', top: 0, right: 0, width: 10, height: 10,
+    borderRadius: 5, backgroundColor: '#EF4444', borderWidth: 1.5, borderColor: '#0F172A',
   },
-  info:       { flex: 1 },
-  sender:     { fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 3 },
-  company:    { fontSize: 13, color: '#888', marginBottom: 4 },
-  newBadgeWrap: { alignSelf: 'flex-start' },
+  info:         { flex: 1 },
+  sender:       { fontSize: FS.xl, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
+  company:      { fontSize: FS.base, color: '#CBD5E1', marginTop: 2, marginBottom: 4 },
+  newBadgeWrap: { alignSelf: 'flex-start', marginTop: 4 },
   newBadge: {
-    fontSize: 11, fontWeight: '700', color: '#fff', backgroundColor: GOLD,
-    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, overflow: 'hidden',
+    fontSize: FS.xs, fontWeight: '600', color: '#FFFFFF', backgroundColor: '#EF4444',
+    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, overflow: 'hidden',
   },
-  metaCol:  { alignItems: 'flex-end', marginLeft: 8 },
-  time:     { fontSize: 12, color: GOLD, fontWeight: '600' },
+  metaCol: { alignItems: 'flex-end', marginLeft: 8 },
+  time:    { fontSize: FS.sm, color: '#94A3B8', fontWeight: '500' },
 
   actionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F0EADA',
+    backgroundColor: '#FFFFFF',
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
   actionBtnView: {
     flex: 1,
@@ -380,13 +415,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: GOLD,
-    borderRadius: 12,
-    paddingVertical: 10,
-    marginRight: 10,
+    paddingVertical: 13,
   },
   actionBtnTextView: {
-    color: '#fff',
-    fontSize: 14,
+    color: '#FFFFFF',
+    fontSize: FS.md,
     fontWeight: '700',
     marginLeft: 6,
   },
@@ -395,24 +428,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FDF6E3',
-    borderRadius: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#E6D7A3',
-    marginLeft: 10,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 13,
+    borderLeftWidth: 1,
+    borderLeftColor: '#E5E7EB',
   },
   actionBtnTextSave: {
     color: GOLD,
-    fontSize: 14,
+    fontSize: FS.md,
     fontWeight: '700',
     marginLeft: 6,
   },
 
   liveBadge: {
-    alignSelf: 'center', marginTop: 8, marginBottom: 6, backgroundColor: GOLD,
-    borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6,
+    alignSelf: 'center', marginTop: 6, marginBottom: 4, backgroundColor: GOLD,
+    borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
   },
-  liveBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  liveBadgeText: { color: '#FFFFFF', fontSize: FS.sm, fontWeight: '700' },
 });

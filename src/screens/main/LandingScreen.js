@@ -10,6 +10,8 @@ import {
   BackHandler,
   Alert,
   StyleSheet,
+  PermissionsAndroid,
+  Platform,
 } from 'react-native';
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -295,7 +297,7 @@ export default function LandingScreen({ navigation }) {
   const [contacts, setContacts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
-  const [, setIsListening] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
 
   // â”€â”€ Back button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -355,7 +357,45 @@ export default function LandingScreen({ navigation }) {
     navigation.navigate('PersonalDetails');
   }, [navigation]);
 
-  const handleMicPress  = useCallback(() => setIsListening(v => !v), []);
+  const requestMicrophonePermission = useCallback(async () => {
+    if (Platform.OS !== 'android') {
+      return true;
+    }
+
+    try {
+      const result = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+        {
+          title: 'Microphone access',
+          message: 'Allow access to the microphone so you can speak search queries.',
+          buttonPositive: 'Allow',
+          buttonNegative: 'Cancel',
+        },
+      );
+      return result === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (err) {
+      console.log('Microphone permission error:', err);
+      return false;
+    }
+  }, []);
+
+  const handleMicPress = useCallback(async () => {
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    const granted = await requestMicrophonePermission();
+    if (!granted) {
+      Alert.alert(
+        'Microphone access needed',
+        'Enable microphone access from your device settings to use voice search.',
+      );
+      return;
+    }
+
+    setIsListening(true);
+  }, [isListening, requestMicrophonePermission]);
 
   const handleLogout = useCallback(async () => {
     await websocketService.disconnect();
@@ -368,6 +408,12 @@ export default function LandingScreen({ navigation }) {
     setMenuVisible(false);
     navigation.replace('Login');
   }, [navigation]);
+
+  useEffect(() => {
+    if (!isListening) return;
+    const timer = setTimeout(() => setIsListening(false), 4200);
+    return () => clearTimeout(timer);
+  }, [isListening]);
 
   // â”€â”€ FlatList render functions (useCallback â€” stable reference for FlatList)
   const renderContact = useCallback(({ item }) => (
@@ -397,8 +443,16 @@ export default function LandingScreen({ navigation }) {
             value={searchQuery}
             onChangeText={handleSearch}
           />
-          <TouchableOpacity onPress={handleMicPress}>
-            <Ionicons name="mic" size={20} color={COLORS.accent} />
+          <TouchableOpacity
+            onPress={handleMicPress}
+            accessibilityLabel="Toggle voice search"
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Ionicons
+              name={isListening ? 'mic-circle' : 'mic'}
+              size={20}
+              color={isListening ? '#4ECCA3' : COLORS.accent}
+            />
           </TouchableOpacity>
         </View>
 
@@ -409,6 +463,13 @@ export default function LandingScreen({ navigation }) {
           <Ionicons name="person-circle" size={32} color={COLORS.accent} />
         </TouchableOpacity>
       </View>
+
+      {isListening && (
+        <View style={ls.micStatus}>
+          <View style={ls.micPulse} />
+          <Text style={ls.micStatusText}>Listening for voice search...</Text>
+        </View>
+      )}
 
       {/* SIDE MENU */}
       <Modal visible={menuVisible} animationType="slide" transparent>
@@ -534,6 +595,24 @@ const ls = StyleSheet.create({
     padding: 4,
   },
   searchInput: { flex: 1, marginLeft: 6, fontSize: 14, color: COLORS.text },
+  micStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 14,
+    marginTop: 4,
+  },
+  micPulse: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#4ECCA3',
+  },
+  micStatusText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: '#4ECCA3',
+    fontWeight: '600',
+  },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   sideMenu: {
     width: 270,

@@ -96,11 +96,11 @@ export default function LoginScreen({ navigation, route }) {
 
   const showSignupAlert = (message) => {
     Alert.alert(
-      'Please Sign Up First',
+      'Account Not Found',
       message || 'No account found for this number. Please sign up first.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Up', onPress: () => navigation.navigate('Signup') },
+        { text: 'Signup', onPress: () => navigation.navigate('Signup') },
       ]
     );
   };
@@ -133,11 +133,19 @@ export default function LoginScreen({ navigation, route }) {
   };
 
   // ── Send OTP ─────────────────────────────────────────────────────────────────
-  const handleSendOtp = () => {
+  const handleSendOtp = async () => {
     if (!validPhone(phone)) {
       Alert.alert('Invalid Number', 'Please enter a valid 10-digit mobile number.');
       return;
     }
+    // Wipe any stale session BEFORE the OTP request so the server
+    // creates a fresh session for this user — not the previous user's session
+    try { await AsyncStorage.removeItem('sessionCookie'); } catch {}
+    // Reset OTP state
+    setOtp(Array(OTP_LENGTH).fill(''));
+    setOtpSent(false);
+    setTimer(0);
+    setCanResend(false);
     startOtpFlow('/auth/mobile/login');
   };
 

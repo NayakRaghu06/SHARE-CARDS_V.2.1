@@ -122,10 +122,10 @@ const MinimalTemplate = ({ data, userData, landscape }) => {
       </View>
 
       <View style={styles.fieldsContainer}>
-        <ExpandableField label="Name" value={d?.name || '-'} fieldKey="name" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={styles.value} />
-        {d?.designation ? <ExpandableField label="Designation" value={d.designation} fieldKey="designation" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={styles.value} /> : null}
+        <ExpandableField label="Name" value={d?.name || '-'} fieldKey="name" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={[styles.value, styles.nameValue]} />
+        {d?.designation ? <ExpandableField label="Designation" value={d.designation} fieldKey="designation" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={[styles.value, styles.designationValue]} /> : null}
         {d?.companyName ? (
-          <ExpandableField label="Company Name" value={d.companyName} fieldKey="companyName" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={styles.value} />
+          <ExpandableField label="Company Name" value={d.companyName} fieldKey="companyName" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={[styles.value, styles.companyValue]} />
         ) : null}
         {d?.businessCategory || d?.category ? (
           <ExpandableField label="Business Category" value={d.businessCategory || d.category} fieldKey="businessCategory" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={styles.value} />
@@ -169,7 +169,7 @@ const MinimalTemplate = ({ data, userData, landscape }) => {
         {d?.address ? (<TouchableOpacity onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.address)}`)} style={styles.iconBtn}><Ionicons name="location" size={18} color="#D4AF37" /></TouchableOpacity>) : null}
       </View>
       <TouchableOpacity onPress={toggleExpanded} activeOpacity={0.85} style={{ marginTop: 12, alignSelf: 'stretch', paddingVertical: 10, alignItems: 'center' }}>
-        <Text style={{ color: '#D4AF37', fontWeight: '700' }}>{expanded ? 'Show Less' : 'More'}</Text>
+        <Text style={{ color: '#D4AF37', fontWeight: '700', fontSize: 15 }}>{expanded ? 'Show Less' : 'More'}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -303,7 +303,19 @@ const styles = StyleSheet.create({
   value: {
     width: '100%',
     color: '#D1D5DB',
-    fontSize: 15,
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  nameValue: {
+    fontSize: 18,
+    lineHeight: 22,
+  },
+  designationValue: {
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  companyValue: {
+    fontSize: 16,
     lineHeight: 20,
   },
   qrImage: {
@@ -327,6 +339,16 @@ const styles = StyleSheet.create({
     fontSize: 26,
     color: "#D4AF37",
     fontWeight: "bold",
+  },
+  role: {
+    fontSize: 16,
+    color: "#D1D5DB",
+    fontWeight: "600",
+  },
+  company: {
+    fontSize: 16,
+    color: "#D1D5DB",
+    fontWeight: "600",
   },
   iconBtn: {
     marginHorizontal: 6,

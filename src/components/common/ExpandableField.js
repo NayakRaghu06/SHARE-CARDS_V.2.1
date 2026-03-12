@@ -73,12 +73,13 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   label: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "600",
     color: "#EDEDED",
   },
   value: {
-    fontSize: 14,
+    fontSize: 16,
+    lineHeight: 20,
     color: "#D1D5DB",
     marginLeft: 0,
   },

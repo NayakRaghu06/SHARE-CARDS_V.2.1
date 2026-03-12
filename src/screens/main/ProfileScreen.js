@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import {
   View,
@@ -20,7 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { profileStyles } from '../../styles/screens/profileStyles';
 import { apiFetch, getApiErrorMessage } from '../../utils/api';
-import { clearSession } from '../../utils/storage';
+import FS from '../../styles/typography';
 import websocketService from '../../utils/websocketService';
 import Footer from '../../components/common/Footer';
 import { clearUserTable } from '../../database/userQueries';
@@ -31,11 +31,11 @@ const THEME = {
   text: '#111827',
   muted: '#6B7280',
   primary: '#A62C3B',
-  accent: '#C9A227',
+  accent: '#D4AF37',
   border: '#E5E7EB',
-  headerStart: '#0F0F0F',
-  headerMid: '#141414',
-  headerEnd: '#1A1A1A',
+  headerStart: '#0F172A',
+  headerMid: '#111827',
+  headerEnd: '#1E293B',
 };
 
 export default function ProfileScreen({ navigation, route }) {
@@ -71,7 +71,7 @@ export default function ProfileScreen({ navigation, route }) {
     const loadUserData = async () => {
       setLoading(true);
       try {
-        const { res, data } = await apiFetch('/user/profile', { credentials: 'include' });
+        const { res, data } = await apiFetch('/user/profile');
         if (res.status === 401) {
           await AsyncStorage.multiRemove(['loggedInUserId', 'userPhone', 'activeCardId', 'sessionCookie']);
           Alert.alert('Session expired', getApiErrorMessage(res, data, 'Please log in again.'));
@@ -155,7 +155,7 @@ export default function ProfileScreen({ navigation, route }) {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 1,
@@ -222,19 +222,29 @@ export default function ProfileScreen({ navigation, route }) {
   };
 
   const handleLogout = async () => {
-    await websocketService.disconnect();
-    try {
-      await apiFetch('/auth/logout', { method: 'POST' });
-    } catch {
+    // Step 1: disconnect websocket
+    try { await websocketService.disconnect(); } catch {}
 
-    }
+    // Step 2: invalidate session on backend
+    try { await apiFetch('/auth/logout', { method: 'POST' }); } catch {}
+
+    // Step 3: wipe ALL local auth state
     try {
-      await AsyncStorage.multiRemove(['loggedInUserId', 'userPhone', 'activeCardId', 'sessionCookie']);
-      await clearSession();
+      await AsyncStorage.multiRemove([
+        'loggedInUserId',
+        'userPhone',
+        'activeCardId',
+        'sessionCookie',
+        'otpSessionId',
+        'shareCardTemp',
+        'cachedCards',
+        'userSession',
+        'loggedInUser',
+      ]);
       clearUserTable();
-    } catch {
-      // ignore storage errors
-    }
+    } catch {}
+
+    // Step 4: reset navigation stack to Login
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
@@ -555,7 +565,7 @@ const uiStyles = StyleSheet.create({
     paddingTop: 10,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: FS.h2,
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.2,
@@ -597,7 +607,7 @@ const uiStyles = StyleSheet.create({
     color: '#FFFFFF',
   },
   profileName: {
-    fontSize: 22,
+    fontSize: FS.h2,
     fontWeight: '700',
     color: THEME.text,
     marginTop: 14,
@@ -605,7 +615,7 @@ const uiStyles = StyleSheet.create({
   profileEmail: {
     color: THEME.muted,
     marginTop: 4,
-    fontSize: 14,
+    fontSize: FS.md,
   },
   detailsCard: {
     backgroundColor: THEME.card,
@@ -620,7 +630,7 @@ const uiStyles = StyleSheet.create({
     elevation: 4,
   },
   valueText: {
-    fontSize: 15,
+    fontSize: FS.lg,
     fontWeight: '500',
     marginTop: 3,
     color: THEME.text,
@@ -665,6 +675,6 @@ const uiStyles = StyleSheet.create({
   logoutText: {
     color: '#FFFFFF',
     fontWeight: '600',
-    fontSize: 15,
+    fontSize: FS.lg,
   },
 });

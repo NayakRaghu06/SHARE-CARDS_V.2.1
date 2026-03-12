@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/common/AppHeader";
 import { apiFetch } from "../../utils/api";
+import FS from "../../styles/typography";
 
 export default function MyCardsScreen({ navigation }) {
   const [cards, setCards] = useState([]);
@@ -103,7 +104,7 @@ export default function MyCardsScreen({ navigation }) {
 
   const renderCard = ({ item }) => (
     <View style={styles.card}>
-      <View style={styles.cardHeader}>
+      <TouchableOpacity style={styles.cardTop} onPress={() => handlePreview(item)} activeOpacity={0.85}>
         <View style={styles.avatar}>
           <Ionicons name="person" size={28} color="#D4AF37" />
         </View>
@@ -115,40 +116,35 @@ export default function MyCardsScreen({ navigation }) {
           {item.companyName && (
             <Text style={styles.companyName}>{item.companyName}</Text>
           )}
+          {item.phone && (
+            <Text style={styles.phoneText}>{item.phone}</Text>
+          )}
         </View>
-        <TouchableOpacity
-          style={styles.trashBtn}
-          onPress={() => confirmDelete(item.cardId)}
-        >
-          <Ionicons name="trash-outline" size={22} color="#EF4444" />
-        </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
 
       <View style={styles.actionsRow}>
         <TouchableOpacity
-          onPress={() => handlePreview(item)}
-          style={styles.actionBtn}
-        >
-          <Ionicons name="eye-outline" size={16} color="#D4AF37" />
-          <Text style={styles.actionText}>Preview</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() =>
-            navigation.navigate("EditCardScreen", { cardData: item })
-          }
-          style={styles.actionBtn}
-        >
-          <Ionicons name="create-outline" size={16} color="#D4AF37" />
-          <Text style={styles.actionText}>Edit</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
           onPress={() => handleShare(item)}
-          style={styles.actionBtn}
+          style={styles.shareSection}
         >
-          <Ionicons name="share-social-outline" size={16} color="#D4AF37" />
-          <Text style={styles.actionText}>Share</Text>
+          <Ionicons name="share-social-outline" size={16} color="#FFFFFF" />
+          <Text style={styles.shareText}>Share</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => navigation.navigate("EditCardScreen", { cardData: item })}
+          style={styles.editSection}
+        >
+          <Ionicons name="create-outline" size={16} color="#2563EB" />
+          <Text style={styles.editText}>Edit</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => confirmDelete(item.cardId)}
+          style={styles.deleteSection}
+        >
+          <Ionicons name="trash-outline" size={16} color="#EF4444" />
+          <Text style={styles.deleteText}>Delete</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -158,7 +154,7 @@ export default function MyCardsScreen({ navigation }) {
     <SafeAreaView style={styles.safeArea}>
       <AppHeader />
 
-      <Text style={styles.title}>My Cards</Text>
+      <Text style={styles.title}></Text>
 
       {loading && cards.length === 0 ? (
         <View style={styles.loading}>
@@ -207,13 +203,13 @@ export default function MyCardsScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#F8F9FB",
+    backgroundColor: "#F8FAFC",
   },
 
   title: {
-    fontSize: 20,
+    fontSize: FS.h3,
     fontWeight: "700",
-    color: "#111827",
+    color: "#D4AF37",
     textAlign: "center",
     marginVertical: 16,
   },
@@ -224,24 +220,23 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 20,
+    backgroundColor: "#0F172A",
+    borderRadius: 18,
     marginBottom: 18,
     shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: "#F0E6C8",
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+    overflow: "hidden",
   },
 
-  cardHeader: {
+  cardTop: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    padding: 18,
   },
+
   cardText: {
     flex: 1,
   },
@@ -250,58 +245,94 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    borderWidth: 1,
-    borderColor: "#F3E7B5",
+    borderWidth: 2,
+    borderColor: "#D4AF37",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F3E7B5",
+    backgroundColor: "#1E293B",
     marginRight: 14,
   },
 
   cardName: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#111827",
+    color: "#FFFFFF",
   },
 
   cardDesignation: {
-    fontSize: 14,
-    color: "#4A5568",
+    fontSize: 16,
+    color: "#D4AF37",
     marginTop: 2,
   },
 
   companyName: {
-    fontSize: 13,
-    color: "#9CA3AF",
+    fontSize: 16,
+    color: "#CBD5E1",
     marginTop: 4,
   },
-  trashBtn: {
-    padding: 6,
+
+  phoneText: {
+    fontSize: 14,
+    color: "#CBD5E1",
+    marginTop: 2,
   },
 
   actionsRow: {
+    backgroundColor: "#FFFFFF",
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 12,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
   },
 
-  actionBtn: {
+  shareSection: {
     flex: 1,
+    backgroundColor: "#D4AF37",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 12,
-    paddingVertical: 10,
-    marginHorizontal: 4,
+    paddingVertical: 13,
   },
 
-  actionText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#111827",
-    marginLeft: 6,
+  shareText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: FS.base,
+    marginLeft: 5,
+  },
+
+  editSection: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 13,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+
+  editText: {
+    color: "#2563EB",
+    fontWeight: "700",
+    fontSize: FS.base,
+    marginLeft: 5,
+  },
+
+  deleteSection: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 13,
+  },
+
+  deleteText: {
+    color: "#EF4444",
+    fontWeight: "700",
+    fontSize: FS.base,
+    marginLeft: 5,
   },
 
   loading: {
@@ -332,7 +363,7 @@ const styles = StyleSheet.create({
   },
 
   emptyActionText: {
-    color: "#111827",
+    color: "#FFFFFF",
     fontWeight: "600",
   },
 
@@ -345,7 +376,7 @@ const styles = StyleSheet.create({
   },
 
   retryLabel: {
-    color: "#111827",
+    color: "#FFFFFF",
     fontWeight: "600",
   },
 });

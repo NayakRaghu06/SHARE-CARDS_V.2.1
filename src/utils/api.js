@@ -39,7 +39,6 @@ export const apiFetch = async (endpoint, options = {}) => {
 
   try {
     const res = await fetch(`${BASE_URL}${endpoint}`, {
-      credentials: 'include',
       ...restOptions,
       headers,       // always applied last — guaranteed to be the merged set
     });
