@@ -1,4 +1,6 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useInbox } from '../../context/InboxContext';
 import {
   View,
   Text,
@@ -80,6 +82,15 @@ function InboxScreen({ navigation }) {
   const [badgeScale]                          = useState(new Animated.Value(1));
   const [savingCardId, setSavingCardId]       = useState(null);
 
+  const { setUnreadInboxCount } = useInbox();
+
+  // Reset dashboard badge whenever this screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      setUnreadInboxCount(0);
+    }, [setUnreadInboxCount])
+  );
+
   const getOrHydrateUserId = async () => {
     const stored = await AsyncStorage.getItem('loggedInUserId');
     if (stored) return stored;
@@ -127,6 +138,14 @@ function InboxScreen({ navigation }) {
     return () => { if (unsubscribe) unsubscribe(); };
   }, [badgeScale]);
 
+  // Polling fallback — only fires when WebSocket is not connected
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!websocketService.isConnected()) loadInbox();
+    }, 8000);
+    return () => clearInterval(interval);
+  }, []);
+
   const loadInbox = async () => {
     try {
       setLoading(true);
@@ -135,7 +154,14 @@ function InboxScreen({ navigation }) {
 
       const { res, data } = await apiFetch(`/api/share/received`);
       if (res.status === 401) { navigation.replace('Login'); return; }
-      setInbox(Array.isArray(data) ? data : []);
+      const raw = Array.isArray(data) ? data : [];
+      const sorted = [...raw].sort((a, b) => {
+        const aUnread = !a.viewedAt;
+        const bUnread = !b.viewedAt;
+        if (aUnread !== bUnread) return aUnread ? -1 : 1;
+        return new Date(b.sharedAt) - new Date(a.sharedAt);
+      });
+      setInbox(sorted);
     } catch {
       setInbox([]);
     } finally {
@@ -286,9 +312,6 @@ function InboxScreen({ navigation }) {
             )}
           </View>
 
-          <View style={styles.metaCol}>
-            <Text style={styles.time}>{formatTime(item.sharedAt)}</Text>
-          </View>
         </TouchableOpacity>
 
         {/* Action buttons */}

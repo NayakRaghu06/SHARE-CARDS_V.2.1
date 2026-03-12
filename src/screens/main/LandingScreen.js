@@ -222,10 +222,11 @@ import { apiFetch } from '../../utils/api';
 import AnimatedPressable from '../../components/common/AnimatedPressable';
 import websocketService from '../../utils/websocketService';
 import Footer from '../../components/common/Footer';
+import { useInbox } from '../../context/InboxContext';
 // â”€â”€â”€ Moved OUTSIDE LandingScreen â€” was previously defined inside render,
 //     causing it to remount on every parent state change.
 const InboxButton = React.memo(({ navigation }) => {
-  const [unreadCount, setUnreadCount] = useState(2);
+  const { unreadInboxCount, setUnreadInboxCount } = useInbox();
   const isMounted = useRef(true);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -233,9 +234,27 @@ const InboxButton = React.memo(({ navigation }) => {
     return () => { isMounted.current = false; };
   }, []);
 
-  // Pulse the badge while there are unread messages
+  // Fetch initial unread count on mount
   useEffect(() => {
-    if (unreadCount > 0) {
+    apiFetch('/api/share/received').then(({ res, data }) => {
+      if (!res.ok || !Array.isArray(data)) return;
+      const unread = data.filter(item => !item.viewedAt).length;
+      if (isMounted.current) setUnreadInboxCount(unread);
+    }).catch(() => {});
+  }, [setUnreadInboxCount]);
+
+  // Subscribe to WebSocket — increment badge on each new card arrival
+  useEffect(() => {
+    const unsubscribe = websocketService.subscribeToInbox((payload) => {
+      if (!payload) return;
+      if (isMounted.current) setUnreadInboxCount(prev => prev + 1);
+    });
+    return unsubscribe;
+  }, [setUnreadInboxCount]);
+
+  // Pulse animation while badge is active
+  useEffect(() => {
+    if (unreadInboxCount > 0) {
       const loop = Animated.loop(
         Animated.sequence([
           Animated.spring(pulseAnim, { toValue: 1.3, useNativeDriver: true, speed: 18, bounciness: 10 }),
@@ -247,13 +266,10 @@ const InboxButton = React.memo(({ navigation }) => {
     } else {
       Animated.spring(pulseAnim, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 0 }).start();
     }
-  }, [unreadCount, pulseAnim]);
+  }, [unreadInboxCount, pulseAnim]);
 
   const handleInboxPress = useCallback(() => {
     navigation.navigate('InboxScreen');
-    setTimeout(() => {
-      if (isMounted.current) setUnreadCount(0);
-    }, 500);
   }, [navigation]);
 
   return (
@@ -263,10 +279,10 @@ const InboxButton = React.memo(({ navigation }) => {
         onPress={handleInboxPress}
       >
         <Ionicons name="mail-outline" size={20} color={COLORS.accent} />
-        <Text style={landingStyles.secondaryButtonText}>Inbox</Text>
-        {unreadCount > 0 && (
+        <Text style={landingStyles.secondaryButtonText}>Received Cards</Text>
+        {unreadInboxCount > 0 && (
           <Animated.View style={[ls.badge, { transform: [{ scale: pulseAnim }] }]}>
-            <Text style={ls.badgeText}>{unreadCount}</Text>
+            <Text style={ls.badgeText}>{unreadInboxCount}</Text>
           </Animated.View>
         )}
       </AnimatedPressable>

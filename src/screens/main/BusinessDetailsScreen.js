@@ -15,7 +15,6 @@ import {
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import PrimaryButton from '../../components/buttons/PrimaryButton';
@@ -85,7 +84,6 @@ export default function BusinessDetailsScreen({ route, navigation }) {
     businessDescription: '',
   });
 
-  const [pdfFile, setPdfFile] = useState(null);
   const [logoImage, setLogoImage] = useState(null);
   const [pendingLogo, setPendingLogo] = useState(null);
   const [errors, setErrors] = useState({});
@@ -134,18 +132,6 @@ export default function BusinessDetailsScreen({ route, navigation }) {
     setErrors((prev) => (prev[field] ? { ...prev, [field]: '' } : prev));
   };
 
-  const validatePdfFile = (file) => {
-    if (!file) return '';
-    const name = String(file?.name || '').toLowerCase();
-    const uri = String(file?.uri || '').toLowerCase();
-    const isPdf = name.endsWith('.pdf') || uri.endsWith('.pdf');
-    if (!isPdf) return 'Only PDF files are allowed';
-    const size = Number(file?.size || 0);
-    const maxBytes = 5 * 1024 * 1024;
-    if (size > maxBytes) return 'PDF file size must be 5MB or less';
-    return '';
-  };
-
   const validateForm = () => {
     const newErrors = {};
     const companyName = String(form.companyName || '').trim();
@@ -178,39 +164,8 @@ export default function BusinessDetailsScreen({ route, navigation }) {
       newErrors.businessDescription = 'Business description cannot exceed 500 characters';
     }
 
-    const pdfError = validatePdfFile(pdfFile);
-    if (pdfError) {
-      newErrors.pdfFile = pdfError;
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const handlePdfPicker = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/pdf',
-      });
-
-      if (!result.canceled) {
-        const pickedPdf = {
-          name: result.assets[0].name,
-          uri: result.assets[0].uri,
-          size: result.assets[0].size,
-        };
-        const pdfError = validatePdfFile(pickedPdf);
-        if (pdfError) {
-          setPdfFile(null);
-          setErrors((prev) => ({ ...prev, pdfFile: pdfError }));
-          return;
-        }
-        setPdfFile(pickedPdf);
-        setErrors((prev) => ({ ...prev, pdfFile: '' }));
-      }
-    } catch (err) {
-      Alert.alert('Error', 'Failed to pick PDF file');
-    }
   };
 
   const handleLogoUpload = async () => {
@@ -274,7 +229,6 @@ export default function BusinessDetailsScreen({ route, navigation }) {
       businessSubCategory: form.businessSubCategory,
       clients: form.clients,
       businessDescription: form.businessDescription,
-      descriptionPdf: pdfFile,
       logoImage: logoImage,
     };
 
@@ -632,52 +586,6 @@ export default function BusinessDetailsScreen({ route, navigation }) {
                     />
                   </View>
                 </Animated.View>
-              </View>
-              </AnimatedFormItem>
-
-              {/* PDF UPLOAD */}
-              <AnimatedFormItem index={6}>
-              <View style={businessDetailsStyles.fieldWrapper}>
-                <View style={businessDetailsStyles.labelRow}>
-                  <View style={businessDetailsStyles.labelLeft}>
-                    <Ionicons
-                      name="document"
-                      size={17}
-                      color="#D4AF37"
-                    />
-                    <Text style={businessDetailsStyles.label}>
-                      {'  '}Business Description PDF
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={businessDetailsStyles.pdfButton}
-                  onPress={handlePdfPicker}
-                >
-                  <Ionicons
-                    name="cloud-upload"
-                    size={20}
-                    color="#D4AF37"
-                  />
-                  <Text style={businessDetailsStyles.pdfButtonText}>
-                    Choose PDF File
-                  </Text>
-                </TouchableOpacity>
-                {pdfFile && (
-                  <View style={businessDetailsStyles.pdfFileInfo}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={16}
-                      color="#22c55e"
-                    />
-                    <Text style={businessDetailsStyles.pdfFileName}>
-                      {pdfFile.name}
-                    </Text>
-                  </View>
-                )}
-                {errors.pdfFile ? (
-                  <Text style={businessDetailsStyles.errorText}>{errors.pdfFile}</Text>
-                ) : null}
               </View>
               </AnimatedFormItem>
 

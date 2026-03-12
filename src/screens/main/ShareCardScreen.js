@@ -452,17 +452,6 @@ export default function ShareCardScreen({ navigation, route }) {
               <Text style={styles.shareBtnText}>  Share In App</Text>
             </TouchableOpacity>
 
-            {/* Share on WhatsApp â€” always enabled; invite flow when user not found */}
-            <TouchableOpacity
-              style={[styles.shareBtn, styles.shareBtnWhatsApp]}
-              onPress={handleShareWhatsApp}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="logo-whatsapp" size={20} color="#fff" />
-              <Text style={styles.shareBtnText}>
-                {userFound ? '  Share on WhatsApp' : '  Invite on WhatsApp'}
-              </Text>
-            </TouchableOpacity>
           </>
         )}
 

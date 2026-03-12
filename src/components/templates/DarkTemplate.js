@@ -1,24 +1,60 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, Image, TouchableOpacity, Linking, Alert, LayoutAnimation, Platform, UIManager } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Pressable,
+  Linking,
+  Alert,
+  LayoutAnimation,
+  Platform,
+  UIManager,
+  Animated,
+} from "react-native";
 import * as Sharing from 'expo-sharing';
 import { File, Paths } from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import ExpandableField from '../common/ExpandableField';
-import { LinearGradient } from 'expo-linear-gradient';
 
-const DARK_BG_1 = '#0B132B';
-const DARK_BG_2 = '#1C2541';
-const DARK_BG_3 = '#1C2541';
-const DARK_CARD = '#0A0F1F';
-const DARK_ACCENT = '#F5B301';
-const DARK_TEXT = '#FFFFFF';
+// ── Theme — Platinum Silver / Charcoal ───────────────────────────────────────
+const CARD_BG   = '#1C1C2E';
+const GOLD      = '#C8C8D8';
+const AVATAR_BG = '#2A2A3E';
+const ICON_BG   = '#0E0E1A';
+const GREY_LINE = '#3A3A4E';
+const TEXT      = '#FFFFFF';
 
+// ── Animated social icon button ───────────────────────────────────────────────
+const IconBtn = ({ iconName, onPress }) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  const onPressIn  = () => Animated.spring(scale, { toValue: 0.92, friction: 5, useNativeDriver: true }).start();
+  const onPressOut = () => Animated.spring(scale, { toValue: 1,    friction: 5, useNativeDriver: true }).start();
+  return (
+    <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
+      <Animated.View style={[styles.iconBtn, { transform: [{ scale }] }]}>
+        <Ionicons name={iconName} size={20} color={GOLD} />
+      </Animated.View>
+    </Pressable>
+  );
+};
+
+// ── Main component ────────────────────────────────────────────────────────────
 const DarkTemplate = ({ userData, data }) => {
   const d = data || userData || {};
-  if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental && !global?.nativeFabricUIManager) {
+
+  if (
+    Platform.OS === 'android' &&
+    UIManager.setLayoutAnimationEnabledExperimental &&
+    !global?.nativeFabricUIManager
+  ) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
   }
-  const [expanded, setExpanded] = useState(false);
+
+  const [expanded,      setExpanded]      = useState(false);
+  const [expandedField, setExpandedField] = useState(null);
+
   const toggleExpanded = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpanded((s) => {
@@ -27,14 +63,37 @@ const DarkTemplate = ({ userData, data }) => {
       return next;
     });
   };
-  const [expandedField, setExpandedField] = useState(null);
-  const phone = d.phone || d.mobile || null;
+
+  const phone   = d.phone || d.mobile || null;
   const initial = d?.name ? d.name.trim().charAt(0).toUpperCase() : 'Y';
 
+  // ── Animations ──────────────────────────────────────────────────────────────
+  const cardOpacity = useRef(new Animated.Value(0)).current;
+  const cardScale   = useRef(new Animated.Value(0.95)).current;
+  const avatarScale = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(cardOpacity, { toValue: 1, duration: 450, useNativeDriver: true }),
+      Animated.spring(cardScale,   { toValue: 1, friction: 7, tension: 70, useNativeDriver: true }),
+    ]).start();
+    Animated.spring(avatarScale, {
+      toValue: 1,
+      friction: 5,
+      tension: 100,
+      delay: 220,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  // ── PDF handler (unchanged) ─────────────────────────────────────────────────
   const handlePdf = async (pdf) => {
     if (!pdf) return;
     try {
-      let uri = typeof pdf === 'string' ? pdf : (pdf.uri || pdf.fileUri || pdf.localUri || pdf.path || pdf.url || null);
+      let uri =
+        typeof pdf === 'string'
+          ? pdf
+          : pdf.uri || pdf.fileUri || pdf.localUri || pdf.path || pdf.url || null;
 
       if (uri && uri.startsWith('data:')) {
         const base64 = uri.split(',')[1];
@@ -49,25 +108,40 @@ const DarkTemplate = ({ userData, data }) => {
       }
 
       const available = await Sharing.isAvailableAsync();
-      if (available) {
-        await Sharing.shareAsync(uri);
-        return;
-      }
+      if (available) { await Sharing.shareAsync(uri); return; }
 
-      const supported = uri && await Linking.canOpenURL(uri);
+      const supported = uri && (await Linking.canOpenURL(uri));
       if (supported) await Linking.openURL(uri);
       else Alert.alert('Cannot open PDF', 'No handler available for this PDF.');
-    } catch (e) { Alert.alert('Error opening PDF', e.message || String(e)); }
+    } catch (e) {
+      Alert.alert('Error opening PDF', e.message || String(e));
+    }
   };
 
+  // ── Shared ExpandableField prop spread ─────────────────────────────────────
+  const ef = (extra = {}) => ({
+    expandedField,
+    setExpandedField,
+    containerStyle: styles.fieldBox,
+    labelStyle:     styles.fieldLabel,
+    valueStyle:     styles.fieldValue,
+    ...extra,
+  });
+
   return (
-    <LinearGradient colors={[DARK_BG_1, DARK_BG_2, DARK_BG_3]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cardBg}>
-    <View style={styles.card}>
+    <Animated.View
+      style={[
+        styles.card,
+        { opacity: cardOpacity, transform: [{ scale: cardScale }] },
+      ]}
+    >
+      {/* ── Company logo (top-left inside card) ───────────────────────────── */}
       {d?.companyLogo ? (
         <Image source={{ uri: d.companyLogo }} style={styles.companyLogo} />
       ) : null}
 
-      <View style={styles.avatarOuter}>
+      {/* ── Avatar (spring pop) ───────────────────────────────────────────── */}
+      <Animated.View style={[styles.avatarOuter, { transform: [{ scale: avatarScale }] }]}>
         <View style={styles.avatarInner}>
           {d?.profileImage ? (
             <Image source={{ uri: d.profileImage }} style={styles.profileImage} />
@@ -75,263 +149,335 @@ const DarkTemplate = ({ userData, data }) => {
             <Text style={styles.avatarText}>{initial}</Text>
           )}
         </View>
-      </View>
+      </Animated.View>
 
+      {/* ── Gold highlight bar + thin grey separator ──────────────────────── */}
+      <View style={styles.goldBar} />
+      <View style={styles.greyLine} />
+
+      {/* ── Field cards ───────────────────────────────────────────────────── */}
       <View style={styles.fieldsContainer}>
-        <ExpandableField label="Name" value={d?.name || '-'} fieldKey="name" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={[styles.value, styles.nameValue]} />
+        <ExpandableField
+          label="Name"
+          value={d?.name || '-'}
+          fieldKey="name"
+          {...ef({ valueStyle: [styles.fieldValue, styles.nameValue] })}
+        />
         {d?.designation ? (
-          <ExpandableField label="Designation" value={d.designation} fieldKey="designation" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={[styles.value, styles.designationValue]} />
+          <ExpandableField
+            label="Designation"
+            value={d.designation}
+            fieldKey="designation"
+            {...ef({ valueStyle: [styles.fieldValue, styles.designationValue] })}
+          />
         ) : null}
         {d?.companyName ? (
-          <ExpandableField label="Company Name" value={d.companyName} fieldKey="companyName" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={[styles.value, styles.companyValue]} />
+          <ExpandableField
+            label="Company Name"
+            value={d.companyName}
+            fieldKey="companyName"
+            {...ef({ valueStyle: [styles.fieldValue, styles.companyValue] })}
+          />
         ) : null}
         {d?.businessCategory || d?.category ? (
-          <ExpandableField label="Business Category" value={d.businessCategory || d.category} fieldKey="businessCategory" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={styles.value} />
+          <ExpandableField
+            label="Business Category"
+            value={d.businessCategory || d.category}
+            fieldKey="businessCategory"
+            {...ef()}
+          />
         ) : null}
+
         {expanded && (
           <>
             {d?.description || d?.businessDescription ? (
-              <ExpandableField label="Business Description" value={d.description || d.businessDescription} fieldKey="businessDescription" expandedField={expandedField} setExpandedField={setExpandedField} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={styles.value} />
+              <ExpandableField
+                label="Business Description"
+                value={d.description || d.businessDescription}
+                fieldKey="businessDescription"
+                {...ef()}
+              />
             ) : null}
-
             {phone ? (
-              <ExpandableField label="Mobile" value={phone} fieldKey="mobile" expandedField={expandedField} setExpandedField={setExpandedField} onPressAction={() => Linking.openURL(`tel:${phone}`)} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={styles.value} />
+              <ExpandableField
+                label="Mobile"
+                value={phone}
+                fieldKey="mobile"
+                onPressAction={() => Linking.openURL(`tel:${phone}`)}
+                {...ef()}
+              />
             ) : null}
-
             {d?.email ? (
-              <ExpandableField label="Email" value={d.email} fieldKey="email" expandedField={expandedField} setExpandedField={setExpandedField} onPressAction={() => Linking.openURL(`mailto:${d.email}`)} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={styles.value} />
+              <ExpandableField
+                label="Email"
+                value={d.email}
+                fieldKey="email"
+                onPressAction={() => Linking.openURL(`mailto:${d.email}`)}
+                {...ef()}
+              />
             ) : null}
-
             {d?.website ? (
-              <ExpandableField label="Website" value={d.website} fieldKey="website" expandedField={expandedField} setExpandedField={setExpandedField} onPressAction={() => Linking.openURL(d.website)} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={styles.value} />
+              <ExpandableField
+                label="Website"
+                value={d.website}
+                fieldKey="website"
+                onPressAction={() => Linking.openURL(d.website)}
+                {...ef()}
+              />
             ) : null}
-
             {d?.address ? (
-              <ExpandableField label="Address" value={d.address} fieldKey="address" expandedField={expandedField} setExpandedField={setExpandedField} onPressAction={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.address)}`)} containerStyle={styles.fieldBox} labelStyle={styles.label} valueStyle={styles.value} />
+              <ExpandableField
+                label="Address"
+                value={d.address}
+                fieldKey="address"
+                onPressAction={() =>
+                  Linking.openURL(
+                    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.address)}`
+                  )
+                }
+                {...ef()}
+              />
             ) : null}
           </>
         )}
       </View>
 
+      {/* ── QR code ───────────────────────────────────────────────────────── */}
       {d?.qrCodeImage ? (
         <View style={styles.qrContainer}>
-          <Image source={{ uri: d.qrCodeImage }} style={styles.qrImageCentered} />
+          <Image source={{ uri: d.qrCodeImage }} style={styles.qrImage} />
         </View>
       ) : null}
 
+      {/* ── Divider ───────────────────────────────────────────────────────── */}
+      <View style={styles.divider} />
+
+      {/* ── Social / action icons (press scale animated) ──────────────────── */}
       <View style={styles.socialRow}>
-        {phone ? (<TouchableOpacity onPress={() => Linking.openURL(`tel:${phone}`)} style={styles.iconBtn}><Ionicons name="call" size={18} color={DARK_ACCENT} /></TouchableOpacity>) : null}
-        {d?.whatsapp ? (<TouchableOpacity onPress={() => Linking.openURL(`https://wa.me/${d.whatsapp.replace(/\D/g,'')}`)} style={styles.iconBtn}><Ionicons name="logo-whatsapp" size={18} color={DARK_ACCENT} /></TouchableOpacity>) : null}
-        {d?.linkedin ? (<TouchableOpacity onPress={() => Linking.openURL(d.linkedin)} style={styles.iconBtn}><Ionicons name="logo-linkedin" size={18} color={DARK_ACCENT} /></TouchableOpacity>) : null}
-        {d?.instagram ? (<TouchableOpacity onPress={() => Linking.openURL(d.instagram.startsWith('http') ? d.instagram : `https://instagram.com/${d.instagram.replace(/^@/,'')}`)} style={styles.iconBtn}><Ionicons name="logo-instagram" size={18} color={DARK_ACCENT} /></TouchableOpacity>) : null}
-        {d?.twitter ? (<TouchableOpacity onPress={() => Linking.openURL(d.twitter)} style={styles.iconBtn}><Ionicons name="logo-twitter" size={18} color={DARK_ACCENT} /></TouchableOpacity>) : null}
-        {d?.facebook ? (<TouchableOpacity onPress={() => Linking.openURL(d.facebook)} style={styles.iconBtn}><Ionicons name="logo-facebook" size={18} color={DARK_ACCENT} /></TouchableOpacity>) : null}
-        {d?.website ? (<TouchableOpacity onPress={() => Linking.openURL(d.website)} style={styles.iconBtn}><Ionicons name="globe" size={18} color={DARK_ACCENT} /></TouchableOpacity>) : null}
-        {d?.descriptionPdf ? (<TouchableOpacity onPress={() => handlePdf(d.descriptionPdf)} style={styles.iconBtn}><Ionicons name="document" size={18} color={DARK_ACCENT} /></TouchableOpacity>) : null}
-        {d?.address ? (<TouchableOpacity onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.address)}`)} style={styles.iconBtn}><Ionicons name="location" size={18} color={DARK_ACCENT} /></TouchableOpacity>) : null}
+        {phone       ? <IconBtn iconName="call"           onPress={() => Linking.openURL(`tel:${phone}`)} /> : null}
+        {d?.whatsapp ? <IconBtn iconName="logo-whatsapp"  onPress={() => Linking.openURL(`https://wa.me/${d.whatsapp.replace(/\D/g, '')}`)} /> : null}
+        {d?.linkedin ? <IconBtn iconName="logo-linkedin"  onPress={() => Linking.openURL(d.linkedin)} /> : null}
+        {d?.instagram ? (
+          <IconBtn
+            iconName="logo-instagram"
+            onPress={() =>
+              Linking.openURL(
+                d.instagram.startsWith('http')
+                  ? d.instagram
+                  : `https://instagram.com/${d.instagram.replace(/^@/, '')}`
+              )
+            }
+          />
+        ) : null}
+        {d?.twitter        ? <IconBtn iconName="logo-twitter"  onPress={() => Linking.openURL(d.twitter)} /> : null}
+        {d?.facebook       ? <IconBtn iconName="logo-facebook" onPress={() => Linking.openURL(d.facebook)} /> : null}
+        {d?.website        ? <IconBtn iconName="globe"         onPress={() => Linking.openURL(d.website)} /> : null}
+        {d?.descriptionPdf ? <IconBtn iconName="document"      onPress={() => handlePdf(d.descriptionPdf)} /> : null}
+        {d?.address ? (
+          <IconBtn
+            iconName="location"
+            onPress={() =>
+              Linking.openURL(
+                `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.address)}`
+              )
+            }
+          />
+        ) : null}
       </View>
-      <TouchableOpacity onPress={toggleExpanded} activeOpacity={0.85} style={{ marginTop: 12, alignSelf: 'stretch', paddingVertical: 10, alignItems: 'center' }}>
-        <Text style={{ color: DARK_TEXT, fontWeight: '700', fontSize: 15 }}>{expanded ? 'Show Less' : 'More'}</Text>
+
+      {/* ── More / Show Less ──────────────────────────────────────────────── */}
+      <TouchableOpacity onPress={toggleExpanded} activeOpacity={0.85} style={styles.moreBtn}>
+        <Text style={styles.moreBtnText}>{expanded ? 'Show Less' : 'More'}</Text>
       </TouchableOpacity>
-      {/* visiting card removed */}
-    </View>
-    </LinearGradient>
+    </Animated.View>
   );
 };
 
 export default DarkTemplate;
 
+// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  cardBg: {
-    margin: 16,
-    borderRadius: 22,
-    padding: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
-    elevation: 12,
-  },
+  // ── Outer card ──
   card: {
-    paddingTop: 20,
-    paddingBottom: 22,
-    paddingHorizontal: 18,
-    borderRadius: 20,
-    backgroundColor: DARK_CARD,
-    alignItems: "center",
-  },
-  avatarOuter: {
-    width: 98,
-    height: 98,
-    borderRadius: 49,
-    borderWidth: 1.5,
-    borderColor: DARK_ACCENT,
-    justifyContent: 'center',
+    width: '92%',
+    alignSelf: 'center',
+    backgroundColor: CARD_BG,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: GOLD,
+    padding: 22,
     alignItems: 'center',
-    marginTop: 2,
-    marginBottom: 14,
-    backgroundColor: 'transparent',
+    marginVertical: 16,
+    shadowColor: GOLD,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.22,
+    shadowRadius: 20,
+    elevation: 14,
   },
-  avatarInner: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: '#0E1A33',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: 34,
-    color: DARK_ACCENT,
-    fontWeight: "bold",
-  },
-  profileImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-  },
+
+  // ── Company logo ──
   companyLogo: {
     position: 'absolute',
-    left: 14,
-    top: 14,
-    width: 70,
-    height: 70,
-    borderRadius: 10,
-    overflow: 'hidden',
+    left: 32,
+    top: 32,
+    width: 48,
+    height: 48,
+    borderRadius: 8,
     resizeMode: 'contain',
-    backgroundColor: '#13223F',
+    backgroundColor: AVATAR_BG,
     borderWidth: 1,
-    borderColor: 'rgba(255, 193, 7, 0.45)',
+    borderColor: 'rgba(200,200,216,0.4)',
+  },
+
+  // ── Avatar ──
+  avatarOuter: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 2,
+    borderColor: GOLD,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 14,
+    shadowColor: GOLD,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+  },
+  avatarInner: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: AVATAR_BG,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileImage: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+  },
+  avatarText: {
+    fontSize: 30,
+    color: GOLD,
+    fontWeight: 'bold',
+  },
+
+  // ── Name highlight bar + grey separator ──
+  goldBar: {
+    width: '55%',
+    height: 8,
+    borderRadius: 10,
+    backgroundColor: GOLD,
+    marginBottom: 8,
+  },
+  greyLine: {
+    width: '40%',
+    height: 1.5,
+    borderRadius: 4,
+    backgroundColor: GREY_LINE,
+    marginBottom: 20,
+  },
+
+  // ── Fields ──
+  fieldsContainer: {
+    width: '100%',
+    marginTop: 2,
+  },
+  fieldBox: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    marginVertical: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(200,200,216,0.28)',
+  },
+  fieldLabel: {
+    color: GOLD,
+    fontWeight: '700',
+    fontSize: 12,
+    minWidth: 96,
+  },
+  fieldValue: {
+    color: TEXT,
+    fontSize: 13,
+    lineHeight: 18,
+    flex: 1,
+  },
+  nameValue: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  designationValue: {
+    fontSize: 13,
+    color: '#E0E0E0',
+  },
+  companyValue: {
+    fontSize: 13,
+    color: '#CBD5E1',
+  },
+
+  // ── QR ──
+  qrContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 2,
   },
   qrImage: {
     width: 80,
     height: 80,
-    marginTop: 12,
-    alignSelf: 'center',
-  },
-  qrContainer: {
-    width: '100%',
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 6,
-  },
-  qrImageCentered: {
-    width: 90,
-    height: 90,
     resizeMode: 'contain',
   },
-  name: {
-    fontSize: 26,
-    color: "#FFF",
-    fontWeight: "bold",
+
+  // ── Divider ──
+  divider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: GREY_LINE,
+    marginVertical: 14,
   },
-  badge: {
-    backgroundColor: "#06B6D4",
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 10,
-    marginVertical: 10,
-  },
-  role: {
-    color: "#000",
-    fontWeight: "bold",
-  },
-  company: {
-    fontSize: 14,
-    color: '#94A3B8',
-    marginTop: 8,
-  },
-  description: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginTop: 6,
-  },
-  infoCard: {
-    width: "100%",
-    backgroundColor: "#0F172A",
-    padding: 14,
-    borderRadius: 12,
-    marginVertical: 6,
-  },
-  info: {
-    color: DARK_TEXT,
-    fontSize: 15,
-    textAlign: 'left',
-  },
+
+  // ── Social icons row ──
   socialRow: {
     flexDirection: 'row',
-    marginTop: 14,
-    alignItems: 'center',
-    justifyContent: 'space-evenly',
-    width: '100%',
     flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
   },
   iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 50,
+    height: 50,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#13223F',
+    backgroundColor: ICON_BG,
     borderWidth: 1,
-    borderColor: 'rgba(255, 193, 7, 0.3)',
-    marginBottom: 10,
+    borderColor: GOLD,
+    shadowColor: GOLD,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 5,
   },
-  /* new unified styles */
-  fieldsContainer: {
-    width: '100%',
+
+  // ── More / Show Less ──
+  moreBtn: {
+    marginTop: 14,
     alignSelf: 'center',
-    marginTop: 10,
-    paddingHorizontal: 0,
+    paddingVertical: 8,
+    paddingHorizontal: 28,
   },
-  fieldBox: {
-    width: '100%',
-    backgroundColor: '#13223F',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    marginVertical: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 193, 7, 0.28)',
-  },
-  label: {
-    color: DARK_TEXT,
+  moreBtnText: {
+    color: GOLD,
     fontWeight: '700',
-    fontSize: 14,
-  },
-  value: {
-    color: DARK_TEXT,
     fontSize: 16,
-    lineHeight: 20,
-  },
-  nameValue: {
-    fontSize: 18,
-    lineHeight: 22,
-  },
-  designationValue: {
-    fontSize: 16,
-    lineHeight: 20,
-  },
-  companyValue: {
-    fontSize: 16,
-    lineHeight: 20,
-  },
-  scannedCard: {
-    width: '100%',
-    height: 90,
-    marginTop: 12,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: '#0B1220',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scannedCardImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'contain',
   },
 });

@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
    import { NavigationContainer } from '@react-navigation/native';
    import AppNavigator from './src/navigation/AppNavigator';
    import { createTables } from './src/database/schema';
+   import { InboxProvider } from './src/context/InboxContext';
 
    export default function App() {
 
@@ -12,8 +13,10 @@ import React, { useEffect } from 'react';
      }, []);
 
      return (
-       <NavigationContainer>
-         <AppNavigator />
-       </NavigationContainer>
+       <InboxProvider>
+         <NavigationContainer>
+           <AppNavigator />
+         </NavigationContainer>
+       </InboxProvider>
      );
    }

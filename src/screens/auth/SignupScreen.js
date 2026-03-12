@@ -370,13 +370,13 @@ export default function SignupScreen({ navigation, route }) {
                 error={errors.first}
               />
 
-              <InputField
+              {/* <InputField
                 label="Middle Name"
                 icon="person-outline"
                 placeholder="Enter middle name (optional)"
                 value={form.middle}
                 onChangeText={v => handleChange('middle', v)}
-              />
+              /> */}
 
               <InputField
                 label="Last Name"
