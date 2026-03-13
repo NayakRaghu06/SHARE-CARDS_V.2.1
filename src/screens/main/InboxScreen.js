@@ -78,18 +78,13 @@ const emptyStyles = StyleSheet.create({
 function InboxScreen({ navigation }) {
   const [inbox, setInbox]                     = useState([]);
   const [loading, setLoading]                 = useState(true);
+  const [refreshing, setRefreshing]           = useState(false);
   const [newArrivalCount, setNewArrivalCount] = useState(0);
   const [badgeScale]                          = useState(new Animated.Value(1));
   const [savingCardId, setSavingCardId]       = useState(null);
 
   const { setUnreadInboxCount } = useInbox();
-
-  // Reset dashboard badge whenever this screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      setUnreadInboxCount(0);
-    }, [setUnreadInboxCount])
-  );
+  const inboxLengthRef = useRef(0);
 
   const getOrHydrateUserId = async () => {
     const stored = await AsyncStorage.getItem('loggedInUserId');
@@ -103,11 +98,41 @@ function InboxScreen({ navigation }) {
     return fetched;
   };
 
-  useEffect(() => {
-    loadInbox();
-    const unsubscribe = navigation.addListener('focus', loadInbox);
-    return unsubscribe;
+  const loadInbox = useCallback(async () => {
+    try {
+      setInbox([]);
+      setLoading(true);
+
+      const userId = await getOrHydrateUserId();
+      if (!userId) { navigation.replace('Login'); return; }
+
+      const { res, data } = await apiFetch('/api/share/received');
+      if (res.status === 401) { navigation.replace('Login'); return; }
+
+      const raw = Array.isArray(data) ? data.filter((i) => i?.shareId != null && i?.card != null) : [];
+      const sorted = [...raw].sort((a, b) => {
+        const aUnread = !a.viewedAt;
+        const bUnread = !b.viewedAt;
+        if (aUnread !== bUnread) return aUnread ? -1 : 1;
+        return new Date(b.sharedAt) - new Date(a.sharedAt);
+      });
+      inboxLengthRef.current = sorted.length;
+      setInbox(sorted);
+    } catch {
+      setInbox([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [navigation]);
+
+  // Reload data + reset badge every time this screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      setUnreadInboxCount(0);
+      loadInbox();
+    }, [loadInbox, setUnreadInboxCount])
+  );
 
   // Real-time inbox via WebSocket
   useEffect(() => {
@@ -126,10 +151,9 @@ function InboxScreen({ navigation }) {
         ]).start();
 
         setNewArrivalCount((prev) => prev + 1);
+        if (!incoming?.shareId || !incoming?.card) return;
         setInbox((prev) => {
-          const exists = prev.some(
-            (i) => i.shareId && incoming.shareId && i.shareId === incoming.shareId
-          );
+          const exists = prev.some((i) => i.shareId === incoming.shareId);
           return exists ? prev : [incoming, ...prev];
         });
       });
@@ -146,29 +170,6 @@ function InboxScreen({ navigation }) {
     return () => clearInterval(interval);
   }, []);
 
-  const loadInbox = async () => {
-    try {
-      setLoading(true);
-      const userId = await getOrHydrateUserId();
-      if (!userId) { navigation.replace('Login'); return; }
-
-      const { res, data } = await apiFetch(`/api/share/received`);
-      if (res.status === 401) { navigation.replace('Login'); return; }
-      const raw = Array.isArray(data) ? data : [];
-      const sorted = [...raw].sort((a, b) => {
-        const aUnread = !a.viewedAt;
-        const bUnread = !b.viewedAt;
-        if (aUnread !== bUnread) return aUnread ? -1 : 1;
-        return new Date(b.sharedAt) - new Date(a.sharedAt);
-      });
-      setInbox(sorted);
-    } catch {
-      setInbox([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Open → mark viewed → navigate to card detail
   const handleOpen = useCallback(async (item) => {
     if (!item.viewedAt) {
@@ -182,8 +183,9 @@ function InboxScreen({ navigation }) {
         );
       } catch { /* non-blocking */ }
     }
-    // item.card is the nested CardInfo object from the backend
-    navigation.navigate('CardDetailsScreen', { cardData: normalizeCard(item.card || {}) });
+    navigation.navigate('CardDetailsScreen', {
+      cardData: item?.card ? normalizeCard(item.card) : null,
+    });
   }, [navigation]);
 
   // Save contact → normalize card fields before passing to vCard generator
@@ -288,7 +290,9 @@ function InboxScreen({ navigation }) {
     }
   }, [navigation]);
 
-  const renderItem = useCallback(({ item, index }) => (
+  const renderItem = useCallback(({ item, index }) => {
+    if (!item?.card) return null;
+    return (
     <AnimatedCard index={index}>
       <View style={[styles.card, !item.viewedAt && styles.cardUnread]}>
         {/* Top row */}
@@ -328,7 +332,8 @@ function InboxScreen({ navigation }) {
         </View>
       </View>
     </AnimatedCard>
-  ), [handleOpen, handleSaveContact, formatTime, getSenderName, handleSaveToCollection, savingCardId]);
+  );
+  }, [handleOpen, handleSaveContact, formatTime, getSenderName, handleSaveToCollection, savingCardId]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -345,14 +350,15 @@ function InboxScreen({ navigation }) {
 
       <FlatList
         data={inbox}
-        keyExtractor={(item, index) => String(item?.shareId ?? item?.id ?? `share-${index}`)}
+        keyExtractor={(item, index) => item?.shareId?.toString() ?? String(index)}
         contentContainerStyle={[styles.listContent, inbox.length === 0 && styles.listContentEmpty]}
         showsVerticalScrollIndicator={false}
         onRefresh={loadInbox}
-        refreshing={loading}
+        refreshing={refreshing}
         onScrollBeginDrag={() => setNewArrivalCount(0)}
         renderItem={renderItem}
-        removeClippedSubviews
+        extraData={inbox}
+        removeClippedSubviews={false}
         initialNumToRender={10}
         maxToRenderPerBatch={8}
         windowSize={5}

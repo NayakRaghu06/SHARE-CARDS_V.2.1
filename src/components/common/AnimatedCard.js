@@ -1,25 +1,15 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
 
-/**
- * Wraps any card with a fade-in + slide-up entrance animation.
- * Use the `index` prop to stagger multiple cards.
- *
- * Usage:
- *   <AnimatedCard index={0}>
- *     <MyCard />
- *   </AnimatedCard>
- *
- *   <AnimatedCard index={1}>
- *     <MyCard />
- *   </AnimatedCard>
- */
 const AnimatedCard = ({ children, index = 0, style }) => {
-  const opacity   = useRef(new Animated.Value(0)).current;
+  const opacity    = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(24)).current;
+  const hasAnimated = useRef(false);
 
   useEffect(() => {
-    // Stagger each card by 60ms × its index
+    if (hasAnimated.current) return;
+    hasAnimated.current = true;
+
     const delay = index * 60;
 
     Animated.parallel([
@@ -54,4 +44,4 @@ const AnimatedCard = ({ children, index = 0, style }) => {
   );
 };
 
-export default React.memo(AnimatedCard);
+export default AnimatedCard;
