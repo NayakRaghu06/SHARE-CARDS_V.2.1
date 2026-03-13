@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./src/assets/icons/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": false,
     "splash": {
       "image": "./src/assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -25,14 +24,16 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.raghunayak.dbc",
-      "permissions": ["READ_CONTACTS"]
+      "permissions": [
+        "READ_CONTACTS"
+      ]
     },
     "web": {
       "favicon": "./src/assets/icons/favicon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "187999ab-ab8e-479b-925d-16abf1a050da"
+        "projectId": "3bbd074e-435d-44cc-ba27-200b9c7dc192"
       }
     }
   }

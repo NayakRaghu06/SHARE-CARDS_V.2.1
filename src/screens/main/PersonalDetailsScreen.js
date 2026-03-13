@@ -329,7 +329,7 @@ export default function PersonalDetailsScreen({ navigation }) {
             </AnimatedFormItem>
 
             {/* Email */}
-            <AnimatedFormItem index={3}>
+            {/* <AnimatedFormItem index={3}>
               <InputField
                 label="Email (optional)"
                 placeholder="your.email@gmail.com"
@@ -339,7 +339,7 @@ export default function PersonalDetailsScreen({ navigation }) {
                 onChangeText={(text) => handleFieldChange('email', text)}
                 error={errors.email}
               />
-            </AnimatedFormItem>
+            </AnimatedFormItem> */}
 
             {/* Address */}
             <AnimatedFormItem index={4}>

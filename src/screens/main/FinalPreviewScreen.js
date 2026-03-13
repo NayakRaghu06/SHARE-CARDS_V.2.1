@@ -131,6 +131,8 @@ export default function FinalPreviewScreen({ route, navigation }) {
 
   const previewOnly = route?.params?.previewOnly === true;
   const [expandedField, setExpandedField] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const getOrHydrateUserId = async () => {
     const storedUserId = await AsyncStorage.getItem('loggedInUserId');
@@ -243,6 +245,84 @@ export default function FinalPreviewScreen({ route, navigation }) {
     await Sharing.shareAsync(uri);
   };
 
+  const handleSaveCard = async () => {
+    if (saving || saved) return;
+    setSaving(true);
+    try {
+      const d = effectiveCardData;
+      const slug = selectedTemplate || d.templateSlug || 'classic';
+      const resolvedTemplateId =
+        Number(d.templateId) ||
+        Number(route?.params?.templateId) ||
+        TEMPLATE_ID_MAP[slug] ||
+        TEMPLATE_ID_MAP.classic;
+
+      const payload = {
+        name: d.name || '',
+        designation: d.designation || d.role || '',
+        companyName: d.companyName || d.company || '',
+        phoneNumber1: normalizePhoneDigits(d.phone || d.phoneNumber || d.mobile || ''),
+        phoneNumber2: normalizePhoneDigits(d.phone2 || d.phoneNumber2 || ''),
+        email: d.email || null,
+        companyAddress: d.address || d.companyAddress || d.location || null,
+        username: d.username || null,
+        keywords: d.searchKeywords || d.keywords || null,
+        businessCategory: d.businessCategory || null,
+        businessSubcategory: d.businessSubCategory || d.businessSubcategory || null,
+        clientList: d.clients || d.clientList || null,
+        businessDescription: d.businessDescription || d.description || null,
+        linkedin: normalizeOptionalUrl(d.linkedin),
+        facebook: normalizeOptionalUrl(d.facebook),
+        instagram: normalizeOptionalUrl(d.instagram),
+        twitterXLink: normalizeOptionalUrl(d.twitter || d.twitterXLink),
+        whatsappUrl: normalizeWhatsappUrl(d.whatsappUrl || d.whatsapp),
+        profileImageFileId: d.profileImage || d.photo || d.profileImageFileId || null,
+        logoFileId: d.companyLogo || d.logo || d.logoFileId || null,
+        qrFileId1: d.qrCodeImage || d.qrImage || d.qrFileId1 || null,
+        qrFileId2: d.qrCodeImage2 || d.qrImage2 || d.qrFileId2 || null,
+        pdfFileId: d.descriptionPdf || d.businessPdf || d.pdfFileId || null,
+        templateSlug: slug,
+        templateId: resolvedTemplateId,
+      };
+      console.log('[SaveCard] payload:', JSON.stringify(payload));
+      const { res, data } = await createCard(payload);
+      console.log('[SaveCard] status:', res.status, 'data:', JSON.stringify(data));
+      if (res.status === 401) { navigation.replace('Login'); setSaving(false); return; }
+      if (res.ok) {
+        const savedCardEntry = {
+          ...payload,
+          cardId: data?.cardId ?? payload.cardId,
+          phone: payload.phoneNumber1 || payload.phone || payload.mobile || '',
+          savedImage:
+            payload.savedImage ||
+            payload.profileImage ||
+            payload.profileImageFileId ||
+            payload.photo ||
+            null,
+          template: payload.templateSlug || 'classic',
+        };
+        try {
+          await addDashboardCard(savedCardEntry);
+        } catch (e) {
+          console.warn('Failed to cache dashboard card', e);
+        }
+        if (data?.cardId) {
+          await AsyncStorage.setItem('activeCardId', String(data.cardId));
+        }
+        setSaved(true);
+        Alert.alert('Success', 'Card saved successfully!', [
+          { text: 'OK', onPress: () => navigation.navigate('Landing') },
+        ]);
+      } else {
+        Alert.alert('Error', getApiErrorMessage(res, data, 'Failed to save card'));
+        setSaving(false);
+      }
+    } catch (e) {
+      Alert.alert('Failed to save card', e?.message || 'Something went wrong');
+      setSaving(false);
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
       <StatusBar barStyle="dark-content" />
@@ -278,99 +358,17 @@ export default function FinalPreviewScreen({ route, navigation }) {
           </View>
         </ViewShot>
 
-        {/* Preview shows only the rendered card; debug panels removed */}
-
         {/* BUTTONS */}
         <View style={{ marginHorizontal: 20, marginTop: 30 }}>
-          {/* Premium Save Card button (gold) */}
           <TouchableOpacity
-            style={styles.premiumButton}
-            onPress={async () => {
-              try {
-                const userId = await getOrHydrateUserId();
-                if (!userId) {
-                  Alert.alert('Session Expired', 'Please login again.');
-                  navigation.replace('Login');
-                  return;
-                }
-
-                const d = effectiveCardData;
-                const slug = selectedTemplate || d.templateSlug || 'classic';
-                const resolvedTemplateId =
-                  Number(d.templateId) ||
-                  Number(route?.params?.templateId) ||
-                  TEMPLATE_ID_MAP[slug] ||
-                  TEMPLATE_ID_MAP.classic;
-                // POST /api/cards
-                const payload = {
-                  name: d.name || '',
-                  designation: d.designation || d.role || '',
-                  companyName: d.companyName || d.company || '',
-                  phoneNumber1: normalizePhoneDigits(d.phone || d.phoneNumber || d.mobile || ''),
-                  phoneNumber2: normalizePhoneDigits(d.phone2 || d.phoneNumber2 || ''),
-                  email: d.email || null,
-                  companyAddress: d.address || d.companyAddress || d.location || null,
-                  username: d.username || null,
-                  keywords: d.searchKeywords || d.keywords || null,
-                  businessCategory: d.businessCategory || null,
-                  businessSubcategory: d.businessSubCategory || d.businessSubcategory || null,
-                  clientList: d.clients || d.clientList || null,
-                  businessDescription: d.businessDescription || d.description || null,
-                  linkedin: normalizeOptionalUrl(d.linkedin),
-                  facebook: normalizeOptionalUrl(d.facebook),
-                  instagram: normalizeOptionalUrl(d.instagram),
-                  twitterXLink: normalizeOptionalUrl(d.twitter || d.twitterXLink),
-                  whatsappUrl: normalizeWhatsappUrl(d.whatsappUrl || d.whatsapp),
-                  profileImageFileId: d.profileImage || d.photo || d.profileImageFileId || null,
-                  logoFileId: d.companyLogo || d.logo || d.logoFileId || null,
-                  qrFileId1: d.qrCodeImage || d.qrImage || d.qrFileId1 || null,
-                  qrFileId2: d.qrCodeImage2 || d.qrImage2 || d.qrFileId2 || null,
-                  pdfFileId: d.descriptionPdf || d.businessPdf || d.pdfFileId || null,
-                  templateSlug: slug,
-                  templateId: resolvedTemplateId,
-                };
-                console.log('[SaveCard] payload:', JSON.stringify(payload));
-                const { res, data } = await createCard(payload);
-                console.log('[SaveCard] status:', res.status, 'data:', JSON.stringify(data));
-                if (res.status === 401) { navigation.replace('Login'); return; }
-                if (res.ok) {
-                  const savedCardEntry = {
-                    ...payload,
-                    cardId: data?.cardId ?? payload.cardId,
-                    phone: payload.phoneNumber1 || payload.phone || payload.mobile || '',
-                    savedImage:
-                      payload.savedImage ||
-                      payload.profileImage ||
-                      payload.profileImageFileId ||
-                      payload.photo ||
-                      null,
-                    template: payload.templateSlug || payload.template || 'classic',
-                  };
-                  try {
-                    await addDashboardCard(savedCardEntry);
-                  } catch (e) {
-                    console.warn('Failed to cache dashboard card', e);
-                  }
-                  // Store the cardId so ShareCardScreen can find it immediately
-                  if (data?.cardId) {
-                    await AsyncStorage.setItem('activeCardId', String(data.cardId));
-                  }
-                  Alert.alert('Success', 'Card saved successfully!', [
-                    {
-                      text: 'OK',
-                      onPress: () => navigation.navigate('Landing'),
-                    },
-                  ]);
-                } else {
-                  Alert.alert('Error', getApiErrorMessage(res, data, 'Failed to save card'));
-                }
-              } catch (e) {
-                Alert.alert('Error', e?.message || 'Failed to save card');
-              }
-            }}
+            disabled={saving || saved}
+            style={[styles.premiumButton, (saving || saved) && styles.saveBtnDisabled]}
+            onPress={handleSaveCard}
           >
             <Ionicons name="bookmark" size={20} color="#FFFFFF" />
-            <Text style={[styles.primaryText, { marginLeft: 10 }]}>Save Card</Text>
+            <Text style={[styles.primaryText, { marginLeft: 10 }]}>
+              {saved ? 'Saved' : saving ? 'Saving...' : 'Save Card'}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -422,5 +420,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 4,
+  },
+  saveBtnDisabled: {
+    backgroundColor: '#9CA3AF',
+    opacity: 0.7,
   },
 });

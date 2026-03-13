@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import ModernTemplate from '../../components/templates/ModernTemplate';
@@ -74,13 +74,14 @@ const TemplatePreviewScreen = ({ route, navigation }) => {
         {/* Template Cards */}
         <View>
           {templates.map((template) => (
-            <TouchableOpacity
+            <Pressable
               key={template.id}
               style={[
                 styles.templateCard,
                 selectedTemplate === template.id && styles.templateCardSelected
               ]}
               onPress={() => handleSelectTemplate(template.id)}
+              android_ripple={null}
             >
               {/* Card Preview */}
               <View style={styles.cardPreviewWrapper}>
@@ -99,7 +100,7 @@ const TemplatePreviewScreen = ({ route, navigation }) => {
                   )}
                 </View>
               </View>
-            </TouchableOpacity>
+            </Pressable>
           ))}
         </View>
 

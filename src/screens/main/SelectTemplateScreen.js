@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StatusBar } from "react-native";
+import { View, Text, TouchableOpacity, Pressable, ScrollView, StatusBar } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import colorsDefault from "../../styles/colors";
@@ -130,10 +130,11 @@ export default function SelectTemplateScreen({ route, navigation }) {
             </View>
           ) : (
             templates.map((template) => (
-              <TouchableOpacity
+              <Pressable
                 key={template.id}
                 style={[styles.templateCard, selected === template.id && styles.templateCardSelected]}
                 onPress={() => setSelected(template.id)}
+                android_ripple={null}
               >
                 {/* Card Preview */}
                 <View style={styles.cardPreviewWrapper}>
@@ -154,7 +155,7 @@ export default function SelectTemplateScreen({ route, navigation }) {
                     <Ionicons name="checkmark" size={16} color="#fff" />
                   )}
                 </View>
-              </TouchableOpacity>
+              </Pressable>
             ))
           )}
         </View>

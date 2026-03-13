@@ -449,7 +449,7 @@ export default function BusinessDetailsScreen({ route, navigation }) {
               </AnimatedFormItem>
 
               {/* BUSINESS SUB-CATEGORY */}
-              <AnimatedFormItem index={3}>
+              {/* <AnimatedFormItem index={3}>
               <View style={businessDetailsStyles.fieldWrapper}>
                 <View style={businessDetailsStyles.labelRow}>
                   <View style={businessDetailsStyles.labelLeft}>
@@ -493,7 +493,7 @@ export default function BusinessDetailsScreen({ route, navigation }) {
                 </View>
                 </Animated.View>
               </View>
-              </AnimatedFormItem>
+              </AnimatedFormItem> */}
 
               {/* CLIENTS (commented for now)
               <AnimatedFormItem index={4}>

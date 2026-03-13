@@ -51,13 +51,41 @@ export const apiFetch = async (endpoint, options = {}) => {
       data = { raw: text };
     }
 
-    // Capture session cookie if the backend returns it
-    const setCookieHeader = res.headers.get('set-cookie');
+    // DEBUG — log every response to track session cookie
+    console.log(`[apiFetch] ${endpoint} → ${res.status}`);
+    console.log(`[apiFetch] headers.map:`, JSON.stringify(res.headers.map));
+    console.log(`[apiFetch] data:`, JSON.stringify(data)?.slice(0, 200));
+
+    // Capture session cookie if the backend returns it.
+    // On Android, res.headers.get('set-cookie') is unreliable — fall back to
+    // res.headers.map which is the raw header map React Native exposes on Android.
+    let setCookieHeader = null;
+    try {
+      setCookieHeader =
+        res.headers.get('set-cookie') ||
+        res.headers.get('Set-Cookie') ||
+        (res.headers.map && (
+          res.headers.map['set-cookie'] ||
+          res.headers.map['Set-Cookie']
+        ));
+      // headers.map values can be arrays on some RN versions
+      if (Array.isArray(setCookieHeader)) setCookieHeader = setCookieHeader[0];
+    } catch {}
+
+    console.log(`[apiFetch] setCookieHeader:`, setCookieHeader);
+
     if (setCookieHeader) {
       const cookieValue = setCookieHeader.split(';')[0].trim();
       if (cookieValue) await AsyncStorage.setItem(SESSION_COOKIE_KEY, cookieValue);
+      console.log(`[apiFetch] saved cookie:`, cookieValue);
     } else if (data?.sessionId) {
       await AsyncStorage.setItem(SESSION_COOKIE_KEY, `JSESSIONID=${data.sessionId}`);
+      console.log(`[apiFetch] saved sessionId from body`);
+    } else if (data?.token) {
+      await AsyncStorage.setItem(SESSION_COOKIE_KEY, `token=${data.token}`);
+      console.log(`[apiFetch] saved token from body`);
+    } else {
+      console.log(`[apiFetch] ⚠️ no cookie/token found — storedCookie was:`, storedCookie);
     }
 
     return { res, data };

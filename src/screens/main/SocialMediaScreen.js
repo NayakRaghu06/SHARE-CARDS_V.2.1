@@ -76,10 +76,7 @@ export default function SocialMediaScreen({ route, navigation }) {
         const storedPhone = await AsyncStorage.getItem('userPhone');
         const normalized = String(storedPhone || '').replace(/\D/g, '').slice(0, 10);
         if (!normalized) return;
-        setFormData((prev) => {
-          if (prev.whatsapp && prev.whatsapp.trim()) return prev;
-          return { ...prev, whatsapp: normalized };
-        });
+        setFormData((prev) => ({ ...prev, whatsapp: normalized }));
       } catch (e) {
         console.warn('Failed to load user phone for WhatsApp autofill', e);
       }
@@ -134,6 +131,11 @@ export default function SocialMediaScreen({ route, navigation }) {
   // VALIDATION
   // ================================
   const validateField = (name, value) => {
+    const rule = validations[name];
+    if (rule?.required && !value?.trim()) {
+      if (name === 'linkedin') return 'LinkedIn profile URL is required';
+      return `${name} is required`;
+    }
     if (!value?.trim()) return '';
 
     if (name === 'whatsapp') {
@@ -339,7 +341,7 @@ export default function SocialMediaScreen({ route, navigation }) {
 
           <AnimatedFormItem index={0}>
             <InputField
-              label="WhatsApp (Optional, 10 digits)"
+              label="WhatsApp"
               placeholder="Mobile number"
               icon="logo-whatsapp"
               keyboardType="phone-pad"
@@ -347,7 +349,7 @@ export default function SocialMediaScreen({ route, navigation }) {
               onChangeText={(text) => handleFieldChange('whatsapp', text.replace(/[^0-9]/g, '').slice(0, 10))}
               error={errors.whatsapp}
               maxLength={10}
-              editable={true}
+              editable={false}
             />
           </AnimatedFormItem>
 
@@ -374,7 +376,7 @@ export default function SocialMediaScreen({ route, navigation }) {
             />
           </AnimatedFormItem>
 
-          <AnimatedFormItem index={3}>
+          {/* <AnimatedFormItem index={3}>
             <InputField
               label="Twitter (Optional)"
               placeholder="@username"
@@ -384,9 +386,9 @@ export default function SocialMediaScreen({ route, navigation }) {
               error={errors.twitter}
               maxLength={16}
             />
-          </AnimatedFormItem>
+          </AnimatedFormItem> */}
 
-          <AnimatedFormItem index={4}>
+          {/* <AnimatedFormItem index={4}>
             <InputField
               label="Facebook (Optional)"
               placeholder="https://facebook.com/username"
@@ -395,7 +397,7 @@ export default function SocialMediaScreen({ route, navigation }) {
               onChangeText={(text) => handleFieldChange('facebook', text)}
               error={errors.facebook}
             />
-          </AnimatedFormItem>
+          </AnimatedFormItem> */}
 
           {/* <InputField
             label="Website (Optional)"
@@ -466,6 +468,7 @@ function InputField({
   keyboardType,
   maxLength,
   error,
+  editable = true,
 }) {
   const [isFocused, setIsFocused] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -516,6 +519,7 @@ function InputField({
             onChangeText={onChangeText}
             autoCapitalize="none"
             autoCorrect={false}
+            editable={editable}
             onFocus={onFocusField}
             onBlur={onBlurField}
           />

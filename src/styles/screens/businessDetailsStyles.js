@@ -48,12 +48,6 @@ export const businessDetailsStyles = StyleSheet.create({
     fontSize: 16,
   },
 
-  optionalLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-
   errorText: {
     fontSize: 12,
     fontWeight: '500',
