@@ -16,7 +16,7 @@ import InputField from '../../components/form/InputField';
 import PrimaryButton from '../../components/buttons/PrimaryButton';
 import { loginStyles } from '../../styles/screens/loginStyles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiFetch } from '../../utils/api';
+import { apiFetch, sendLoginOtp } from '../../utils/api';
 import { saveSession } from '../../utils/storage';
 import websocketService from '../../utils/websocketService';
 
@@ -150,24 +150,67 @@ export default function LoginScreen({ navigation, route }) {
   };
 
   // ── Resend OTP ───────────────────────────────────────────────────────────────
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     if (!canResend || sendingOtp) return;
-    startOtpFlow('/auth/resend/login-otp');
+    setSendingOtp(true);
+    try {
+      const { res, data } = await sendLoginOtp(phone);
+      if (res.ok && data?.status === 1) {
+        setOtp(Array(OTP_LENGTH).fill(''));
+        setTimer(30);
+        setCanResend(false);
+        setTimeout(() => inputs.current[0]?.focus(), 300);
+        Alert.alert('OTP Sent', 'New OTP sent successfully');
+      } else {
+        Alert.alert('Error', data?.message || 'Failed to resend OTP. Please try again.');
+      }
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setSendingOtp(false);
+    }
   };
 
   // ── OTP box input ────────────────────────────────────────────────────────────
   const handleOtpChange = (value, index) => {
-    if (!/^\d?$/.test(value)) return;
+    // Strip non-digits
+    const digits = value.replace(/\D/g, '');
+
+    // Autofill / paste: multiple digits arriving at once (e.g. SMS autofill)
+    if (digits.length > 1) {
+      const newOtp = [...otp];
+      digits.split('').slice(0, OTP_LENGTH).forEach((d, i) => {
+        if (i < OTP_LENGTH) newOtp[i] = d;
+      });
+      setOtp(newOtp);
+      const nextIndex = Math.min(digits.length, OTP_LENGTH - 1);
+      inputs.current[nextIndex]?.focus();
+      return;
+    }
+
+    // Backspace produces empty string — handled entirely in handleKeyPress; skip here
+    if (digits === '') return;
+
     const newOtp = [...otp];
-    newOtp[index] = value;
+    newOtp[index] = digits;
     setOtp(newOtp);
-    if (value && index < OTP_LENGTH - 1) {
+    if (index < OTP_LENGTH - 1) {
       inputs.current[index + 1]?.focus();
     }
   };
 
   const handleKeyPress = (e, index) => {
-    if (e.nativeEvent.key === 'Backspace' && otp[index] === '' && index > 0) {
+    if (e.nativeEvent.key !== 'Backspace') return;
+    if (otp[index] !== '') {
+      // Clear the current box in one press
+      const newOtp = [...otp];
+      newOtp[index] = '';
+      setOtp(newOtp);
+    } else if (index > 0) {
+      // Box already empty — move to previous box and clear it
+      const newOtp = [...otp];
+      newOtp[index - 1] = '';
+      setOtp(newOtp);
       inputs.current[index - 1]?.focus();
     }
   };
@@ -230,7 +273,9 @@ export default function LoginScreen({ navigation, route }) {
   };
 
   // ── UI ───────────────────────────────────────────────────────────────────────
-  const isSendDisabled = !validPhone(phone) || sendingOtp || (otpSent && timer > 0);
+  // Once OTP is sent, the Send button stays disabled for the whole session.
+  // Re-sending is handled exclusively by the Resend OTP button with its timer.
+  const isSendDisabled = !validPhone(phone) || sendingOtp || otpSent;
 
   return (
     <SafeAreaView style={loginStyles.safe}>
@@ -297,12 +342,14 @@ export default function LoginScreen({ navigation, route }) {
                         ref={r => (inputs.current[index] = r)}
                         style={loginStyles.otpBox}
                         keyboardType="number-pad"
-                        maxLength={1}
+                        maxLength={OTP_LENGTH}
                         value={digit}
                         onChangeText={value => handleOtpChange(value, index)}
                         onKeyPress={e => handleKeyPress(e, index)}
                         editable={!verifying}
                         selectTextOnFocus
+                        textContentType="oneTimeCode"
+                        autoComplete={index === 0 ? 'sms-otp' : 'off'}
                       />
                     ))}
                   </View>
@@ -321,7 +368,7 @@ export default function LoginScreen({ navigation, route }) {
                         ? 'Sending...'
                         : canResend
                           ? 'Resend OTP'
-                          : `Resend OTP in ${timer}s`}
+                          : `Resend in ${timer}s`}
                     </Text>
                   </TouchableOpacity>
 
