@@ -259,6 +259,7 @@ export default function ProfileScreen({ navigation, route }) {
     // Step 3: wipe ALL local auth state
     try {
       await AsyncStorage.multiRemove([
+        'isLoggedIn',
         'loggedInUserId',
         'userPhone',
         'activeCardId',

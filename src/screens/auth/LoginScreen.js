@@ -256,6 +256,7 @@ export default function LoginScreen({ navigation, route }) {
           await websocketService.connect(resolvedUserId);
         }
 
+        await AsyncStorage.setItem('isLoggedIn', 'true');
         await saveSession(normalizedPhone);
         navigation.replace('Landing');
 

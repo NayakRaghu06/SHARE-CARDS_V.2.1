@@ -1,11 +1,37 @@
 import { useEffect } from 'react';
 import { View, Image, StatusBar, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiFetch } from '../../utils/api';
+import websocketService from '../../utils/websocketService';
 
 export default function SplashScreen({ navigation }) {
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const checkSession = async () => {
+      try {
+        const pairs = await AsyncStorage.multiGet(['loggedInUserId', 'sessionCookie']);
+        const userId = pairs[0][1];
+        const cookie = pairs[1][1];
+
+        if (userId && cookie) {
+          // Validate the stored session against the backend
+          const { res } = await apiFetch('/user/profile');
+          if (res.ok) {
+            // Session still valid — reconnect websocket and skip Login
+            try { await websocketService.connect(userId); } catch {}
+            navigation.replace('Landing');
+            return;
+          }
+          // Session expired — wipe stale data and fall through to Login
+          await AsyncStorage.multiRemove([
+            'isLoggedIn', 'loggedInUserId', 'userPhone', 'sessionCookie',
+          ]);
+        }
+      } catch {}
       navigation.replace('Login');
-    }, 2000);
+    };
+
+    // 1.5 s splash then check
+    const timer = setTimeout(checkSession, 1500);
     return () => clearTimeout(timer);
   }, [navigation]);
 
