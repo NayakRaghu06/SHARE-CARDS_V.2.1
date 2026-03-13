@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
 
@@ -44,13 +43,5 @@ const AnimatedCard = ({ children, index = 0, style }) => {
     </Animated.View>
   );
 };
-=======
-import React from 'react';
-import { View } from 'react-native';
-
-const AnimatedCard = ({ children, style }) => (
-  <View style={style}>{children}</View>
-);
->>>>>>> 53566a4c67d29d43ac7234b4bee460f0d58a5ebc
 
 export default AnimatedCard;

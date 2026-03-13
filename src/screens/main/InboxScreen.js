@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useInbox } from '../../context/InboxContext';
 import {
@@ -86,18 +86,7 @@ function InboxScreen({ navigation }) {
   const isFetching      = useRef(false);
 
   const { setUnreadInboxCount } = useInbox();
-<<<<<<< HEAD
   const inboxLengthRef = useRef(0);
-=======
-
-  // Reset badge + reload inbox every time this screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      setUnreadInboxCount(0);
-      loadInbox();
-    }, [setUnreadInboxCount])
-  );
->>>>>>> 53566a4c67d29d43ac7234b4bee460f0d58a5ebc
 
   const getOrHydrateUserId = async () => {
     const stored = await AsyncStorage.getItem('loggedInUserId');
@@ -111,11 +100,12 @@ function InboxScreen({ navigation }) {
     return fetched;
   };
 
-<<<<<<< HEAD
-  const loadInbox = useCallback(async () => {
+  const loadInbox = useCallback(async (isRefresh = false) => {
+    if (isFetching.current) return;
+    isFetching.current = true;
     try {
-      setInbox([]);
-      setLoading(true);
+      // Only show spinner on first load or explicit pull-to-refresh — never blank the list
+      if (!initialLoadDone.current || isRefresh) setLoading(true);
 
       const userId = await getOrHydrateUserId();
       if (!userId) { navigation.replace('Login'); return; }
@@ -131,23 +121,30 @@ function InboxScreen({ navigation }) {
         return new Date(b.sharedAt) - new Date(a.sharedAt);
       });
       inboxLengthRef.current = sorted.length;
-      setInbox(sorted);
+      // Only update state if data actually changed — prevents unnecessary re-renders
+      setInbox((prev) => {
+        const prevIds = prev.map((i) => i.shareId).join(',');
+        const nextIds = sorted.map((i) => i.shareId).join(',');
+        return prevIds === nextIds ? prev : sorted;
+      });
+      initialLoadDone.current = true;
     } catch {
-      setInbox([]);
+      // Preserve existing list on error — don't blank the screen
     } finally {
       setLoading(false);
       setRefreshing(false);
+      isFetching.current = false;
     }
   }, [navigation]);
-=======
->>>>>>> 53566a4c67d29d43ac7234b4bee460f0d58a5ebc
 
-  // Reload data + reset badge every time this screen comes into focus
+  // Load once on first focus; subsequent focuses only reset the badge
   useFocusEffect(
     useCallback(() => {
       setUnreadInboxCount(0);
-      loadInbox();
-    }, [loadInbox, setUnreadInboxCount])
+      if (!initialLoadDone.current) {
+        loadInbox();
+      }
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // Real-time inbox via WebSocket
@@ -182,62 +179,16 @@ function InboxScreen({ navigation }) {
     return () => { if (unsubscribe) unsubscribe(); };
   }, [badgeScale]);
 
-  // Polling fallback — only fires when WebSocket is not connected
+  // Polling fallback — only fires when WebSocket is not connected (30s to avoid blink spam)
   useEffect(() => {
     const interval = setInterval(() => {
       if (!websocketService.isConnected()) loadInbox();
-    }, 8000);
+    }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-<<<<<<< HEAD
-=======
-  const loadInbox = async (forceLoading = false) => {
-    // Prevent concurrent fetches (e.g. useFocusEffect + polling interval firing together)
-    if (isFetching.current) return;
-    isFetching.current = true;
-    try {
-      // Show spinner only on first load or explicit pull-to-refresh.
-      // initialLoadDone is a ref (not state), so it always holds the latest value
-      // even when called from a stale useFocusEffect closure.
-      if (!initialLoadDone.current || forceLoading) setLoading(true);
 
-      const userId = await getOrHydrateUserId();
-      if (!userId) { navigation.replace('Login'); return; }
 
-      const { res, data } = await apiFetch(`/api/share/received`);
-      if (res.status === 401) { navigation.replace('Login'); return; }
-      // Backend may return array directly or wrapped in { data: [...] }
-      const raw = Array.isArray(data) ? data
-                : Array.isArray(data?.data) ? data.data
-                : [];
-      const sorted = [...raw].sort((a, b) => {
-        const aUnread = !a.viewedAt;
-        const bUnread = !b.viewedAt;
-        if (aUnread !== bUnread) return aUnread ? -1 : 1;
-        return new Date(b.sharedAt) - new Date(a.sharedAt);
-      });
-
-      // Merge fresh API data onto cached items so that fields the backend
-      // omits for already-viewed cards (senderFirstName, nested card object,
-      // etc.) are preserved from the previous state instead of going blank.
-      setInbox((prev) => {
-        const cache = new Map(prev.map((i) => [i.shareId, i]));
-        return sorted.map((item) => ({
-          ...(cache.get(item.shareId) || {}), // keep locally-cached fields
-          ...item,                            // overwrite with fresh API values
-        }));
-      });
-      initialLoadDone.current = true;
-    } catch {
-      // Silently preserve existing inbox data on refresh errors
-    } finally {
-      setLoading(false);
-      isFetching.current = false;
-    }
-  };
-
->>>>>>> 53566a4c67d29d43ac7234b4bee460f0d58a5ebc
   // Open → mark viewed → navigate to card detail
   const handleOpen = useCallback(async (item) => {
     if (!item.viewedAt) {
@@ -359,12 +310,7 @@ function InboxScreen({ navigation }) {
   }, [navigation]);
 
   const renderItem = useCallback(({ item, index }) => {
-<<<<<<< HEAD
     if (!item?.card) return null;
-=======
-    // Skip malformed items that would render as a blank dark block
-    if (!item?.shareId) return null;
->>>>>>> 53566a4c67d29d43ac7234b4bee460f0d58a5ebc
     return (
     <AnimatedCard index={index}>
       <View style={[styles.card, !item.viewedAt && styles.cardUnread]}>
@@ -405,11 +351,7 @@ function InboxScreen({ navigation }) {
         </View>
       </View>
     </AnimatedCard>
-<<<<<<< HEAD
   );
-=======
-    );
->>>>>>> 53566a4c67d29d43ac7234b4bee460f0d58a5ebc
   }, [handleOpen, handleSaveContact, formatTime, getSenderName, handleSaveToCollection, savingCardId]);
 
   return (
@@ -427,22 +369,14 @@ function InboxScreen({ navigation }) {
 
       <FlatList
         data={inbox}
-        keyExtractor={(item, index) => item?.shareId?.toString() ?? String(index)}
+        keyExtractor={(item) => item.shareId.toString()}
         contentContainerStyle={[styles.listContent, inbox.length === 0 && styles.listContentEmpty]}
         showsVerticalScrollIndicator={false}
-<<<<<<< HEAD
-        onRefresh={loadInbox}
+        onRefresh={() => loadInbox(true)}
         refreshing={refreshing}
         onScrollBeginDrag={() => setNewArrivalCount(0)}
         renderItem={renderItem}
-        extraData={inbox}
         removeClippedSubviews={false}
-=======
-        onRefresh={() => loadInbox(true)}
-        refreshing={loading}
-        onScrollBeginDrag={() => setNewArrivalCount(0)}
-        renderItem={renderItem}
->>>>>>> 53566a4c67d29d43ac7234b4bee460f0d58a5ebc
         initialNumToRender={10}
         maxToRenderPerBatch={8}
         windowSize={5}

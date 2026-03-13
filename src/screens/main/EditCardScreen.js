@@ -11,10 +11,12 @@ import {
   Alert,
   Animated,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiFetch } from '../../utils/api';
 import AppHeader from '../../components/common/AppHeader';
 import FS from '../../styles/typography';
@@ -29,7 +31,7 @@ export default function EditCardScreen({ route, navigation }) {
   const [designation, setDesignation] = useState(cardData.designation || '');
   const phone = cardData.phoneNumber || cardData.phone || cardData.mobileNumber || '';
   const [email, setEmail]     = useState(cardData.email || '');
-  const [address, setAddress] = useState(cardData.address || '');
+  const [address, setAddress] = useState(cardData.address || cardData.companyAddress || cardData.location || '');
 
   // Business
   const [businessCategory,    setBusinessCategory]    = useState(cardData.businessCategory || '');
@@ -49,6 +51,7 @@ export default function EditCardScreen({ route, navigation }) {
   const [companyLogo,  setCompanyLogo]  = useState(cardData.companyLogo || null);
 
   const [focusedField, setFocusedField] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const btnScale = useRef(new Animated.Value(1)).current;
 
   // ── Image pickers ─────────────────────────────────────────────────────────
@@ -73,14 +76,16 @@ export default function EditCardScreen({ route, navigation }) {
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleUpdate = async () => {
+    if (submitting) return;
+    setSubmitting(true);
     try {
       const payload = {
         name,
         designation,
         companyName,
-        phoneNumber: phone,
+        phoneNumber1:         phone,
         email:                email || null,
-        address:              address || null,
+        companyAddress:       address || null,
         businessCategory:     businessCategory || null,
         businessSubcategory:  businessSubCategory || null,
         businessDescription:  description || null,
@@ -88,11 +93,11 @@ export default function EditCardScreen({ route, navigation }) {
         linkedin:             linkedin || null,
         facebook:             facebook || null,
         instagram:            instagram || null,
-        twitter:              twitter || null,
+        twitterXLink:         twitter || null,
         website:              website || null,
         profileImage:         profileImage || null,
         companyLogo:          companyLogo || null,
-        templateSlug: cardData.templateSlug || 'classic',
+        templateSlug:         cardData.templateSlug || 'classic',
       };
       const { res, data } = await apiFetch(`/api/cards/update-card/${cardId}`, {
         method: 'PUT',
@@ -100,12 +105,39 @@ export default function EditCardScreen({ route, navigation }) {
       });
       if (res.status === 401) { navigation.replace('Login'); return; }
       if (res.ok) {
-        navigation.goBack();
+        const updatedCard = {
+          cardId,
+          name,
+          designation,
+          companyName,
+          phone,
+          email:               email || null,
+          address:             address || null,
+          companyAddress:      address || null,  // server returns address as companyAddress
+          businessCategory:    businessCategory || null,
+          businessSubcategory: businessSubCategory || null,
+          businessDescription: description || null,
+          whatsappUrl:         whatsapp || null,
+          linkedin:            linkedin || null,
+          facebook:            facebook || null,
+          instagram:           instagram || null,
+          twitter:             twitter || null,
+          website:             website || null,
+        };
+        // Persist locally so MyCardsScreen can merge it over every loadCards()
+        // call until the server starts returning the updated data.
+        await AsyncStorage.setItem(
+          `pendingCardUpdate_${cardId}`,
+          JSON.stringify(updatedCard),
+        );
+        navigation.navigate('MyCards', { _updatedCard: updatedCard });
       } else {
         Alert.alert('Error', data?.message || 'Failed to update card');
       }
     } catch (e) {
       Alert.alert('Error', e.message || 'Failed to update card');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -295,13 +327,17 @@ export default function EditCardScreen({ route, navigation }) {
         <View style={styles.stickyButtonContainer}>
           <Animated.View style={{ transform: [{ scale: btnScale }] }}>
             <TouchableOpacity
-              style={styles.updateBtn}
+              style={[styles.updateBtn, submitting && { opacity: 0.7 }]}
               onPress={handleUpdate}
               onPressIn={animatePressIn}
               onPressOut={animatePressOut}
               activeOpacity={1}
+              disabled={submitting}
             >
-              <Text style={styles.updateBtnText}>Update Card</Text>
+              {submitting
+                ? <ActivityIndicator color="#0F172A" />
+                : <Text style={styles.updateBtnText}>Update Card</Text>
+              }
             </TouchableOpacity>
           </Animated.View>
         </View>

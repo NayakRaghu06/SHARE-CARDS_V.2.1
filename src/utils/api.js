@@ -25,7 +25,12 @@ export const clearSessionCookie = () =>
 //  so the merged `headers` object always wins.
 // ─────────────────────────────────────────────
 export const apiFetch = async (endpoint, options = {}) => {
-  const storedCookie = await AsyncStorage.getItem(SESSION_COOKIE_KEY);
+  const rawCookie = await AsyncStorage.getItem(SESSION_COOKIE_KEY);
+  // Take only the first cookie token (name=value) — guards against comma-joined
+  // multi-cookie strings that confuse the backend session validation.
+  const storedCookie = rawCookie ? rawCookie.split(',')[0].trim() : null;
+
+  console.log(`[apiFetch] ${endpoint} — cookie sent:`, storedCookie ?? '(none)');
 
   // Build merged headers (defaultHeaders → cookie → caller overrides)
   const headers = {
@@ -51,10 +56,7 @@ export const apiFetch = async (endpoint, options = {}) => {
       data = { raw: text };
     }
 
-    // DEBUG — log every response to track session cookie
     console.log(`[apiFetch] ${endpoint} → ${res.status}`);
-    console.log(`[apiFetch] headers.map:`, JSON.stringify(res.headers.map));
-    console.log(`[apiFetch] data:`, JSON.stringify(data)?.slice(0, 200));
 
     // Capture session cookie if the backend returns it.
     // On Android, res.headers.get('set-cookie') is unreliable — fall back to
@@ -72,10 +74,10 @@ export const apiFetch = async (endpoint, options = {}) => {
       if (Array.isArray(setCookieHeader)) setCookieHeader = setCookieHeader[0];
     } catch {}
 
-    console.log(`[apiFetch] setCookieHeader:`, setCookieHeader);
-
     if (setCookieHeader) {
-      const cookieValue = setCookieHeader.split(';')[0].trim();
+      // Split on ';' first (strips path/httponly/etc), then on ',' (multi-cookie separator)
+      // to ensure we store only a single clean name=value token.
+      const cookieValue = setCookieHeader.split(';')[0].split(',')[0].trim();
       if (cookieValue) await AsyncStorage.setItem(SESSION_COOKIE_KEY, cookieValue);
       console.log(`[apiFetch] saved cookie:`, cookieValue);
     } else if (data?.sessionId) {
@@ -84,8 +86,6 @@ export const apiFetch = async (endpoint, options = {}) => {
     } else if (data?.token) {
       await AsyncStorage.setItem(SESSION_COOKIE_KEY, `token=${data.token}`);
       console.log(`[apiFetch] saved token from body`);
-    } else {
-      console.log(`[apiFetch] ⚠️ no cookie/token found — storedCookie was:`, storedCookie);
     }
 
     return { res, data };

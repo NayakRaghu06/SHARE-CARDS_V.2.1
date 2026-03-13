@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
@@ -9,21 +9,38 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppHeader from "../../components/common/AppHeader";
 import { apiFetch } from "../../utils/api";
 import FS from "../../styles/typography";
 
-export default function MyCardsScreen({ navigation }) {
+export default function MyCardsScreen({ navigation, route }) {
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
 
-  const loadCards = useCallback(async () => {
-    setCards([]);        // reset before fetch to prevent stale data overlap
-    setLoading(true);
+  // Holds the last locally-edited card so loadCards can merge it even when
+  // the server returns a stale (pre-update) response.
+  const pendingUpdateRef = useRef(null);
+
+  // Optimistic update: patch state immediately AND store in ref so the
+  // subsequent loadCards() call can preserve our local edits over server data.
+  useEffect(() => {
+    const updatedCard = route?.params?._updatedCard;
+    if (!updatedCard?.cardId) return;
+    pendingUpdateRef.current = updatedCard;
+    setCards((prev) =>
+      prev.map((c) => (c.cardId === updatedCard.cardId ? { ...c, ...updatedCard } : c))
+    );
+    navigation.setParams({ _updatedCard: null });
+  }, [route?.params?._updatedCard]);
+
+  const loadCards = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
     setErrorMessage(null);
 
     try {
@@ -37,7 +54,6 @@ export default function MyCardsScreen({ navigation }) {
       }
 
       const payload = Array.isArray(data) ? data : [];
-      // Sort newest first: by createdAt DESC, fallback to reverse insertion order
       const hasDateInfo = payload.some((c) => c.createdAt || c.createdDate);
       const sorted = hasDateInfo
         ? [...payload].sort((a, b) => {
@@ -45,12 +61,40 @@ export default function MyCardsScreen({ navigation }) {
             const dateB = new Date(b.createdAt || b.createdDate || 0).getTime();
             return dateB - dateA;
           })
-        : [...payload].reverse(); // API returns oldest-first; reverse shows newest at top
-      setCards(sorted);
+        : [...payload].reverse();
+
+      // 1) In-memory ref handles the immediate post-edit reload.
+      const pending = pendingUpdateRef.current;
+      let inMemoryMerged = pending
+        ? sorted.map((c) => (c.cardId === pending.cardId ? { ...c, ...pending } : c))
+        : sorted;
+      pendingUpdateRef.current = null;
+
+      // 2) AsyncStorage overrides survive pull-to-refresh until the server
+      //    starts returning the updated address (backend cache lag fix).
+      const storageKeys = inMemoryMerged.map((c) => `pendingCardUpdate_${c.cardId}`);
+      const pairs = await AsyncStorage.multiGet(storageKeys);
+      const staleKeys = [];
+      const merged = inMemoryMerged.map((c) => {
+        const raw = pairs.find(([k]) => k === `pendingCardUpdate_${c.cardId}`)?.[1];
+        if (!raw) return c;
+        const saved = JSON.parse(raw);
+        // Once server address matches what we saved, stop overriding.
+        const serverAddr = c.address || c.companyAddress || c.location || null;
+        if (serverAddr === saved.address) {
+          staleKeys.push(`pendingCardUpdate_${c.cardId}`);
+          return c;
+        }
+        return { ...c, ...saved };
+      });
+      if (staleKeys.length) await AsyncStorage.multiRemove(staleKeys);
+
+      setCards(merged);
     } catch (err) {
       setErrorMessage("Unable to load cards. Pull to retry.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [navigation]);
 
@@ -158,7 +202,14 @@ export default function MyCardsScreen({ navigation }) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => navigation.navigate("EditCardScreen", { cardData: item })}
+          onPress={() => navigation.navigate("EditCardScreen", {
+            cardData: {
+              ...item,
+              address: item.address || item.companyAddress || item.location || '',
+              phone: item.phone || item.phoneNumber1 || item.phoneNumber || item.mobileNumber || '',
+              whatsapp: item.whatsapp || item.whatsappUrl || '',
+            },
+          })}
           style={styles.editSection}
         >
           <Ionicons name="create-outline" size={16} color="#2563EB" />
@@ -215,11 +266,7 @@ export default function MyCardsScreen({ navigation }) {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await loadCards();
-            setRefreshing(false);
-          }}
+          onRefresh={() => loadCards(true)}
         />
       )}
     </SafeAreaView>
