@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
   Text,
@@ -21,17 +22,14 @@ export default function MyCardsScreen({ navigation }) {
   const [errorMessage, setErrorMessage] = useState(null);
 
   const loadCards = useCallback(async () => {
+    setCards([]);        // reset before fetch to prevent stale data overlap
     setLoading(true);
     setErrorMessage(null);
 
     try {
-      const { res, data } = await apiFetch(
-        "/api/cards/view-cards",
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
+      const { res, data } = await apiFetch("/api/cards/view-cards", {
+        method: "GET",
+      });
 
       if (res.status === 401) {
         navigation.replace("Login");
@@ -39,26 +37,44 @@ export default function MyCardsScreen({ navigation }) {
       }
 
       const payload = Array.isArray(data) ? data : [];
-      setCards(payload);
+      // Sort newest first: by createdAt DESC, fallback to reverse insertion order
+      const hasDateInfo = payload.some((c) => c.createdAt || c.createdDate);
+      const sorted = hasDateInfo
+        ? [...payload].sort((a, b) => {
+            const dateA = new Date(a.createdAt || a.createdDate || 0).getTime();
+            const dateB = new Date(b.createdAt || b.createdDate || 0).getTime();
+            return dateB - dateA;
+          })
+        : [...payload].reverse(); // API returns oldest-first; reverse shows newest at top
+      setCards(sorted);
     } catch (err) {
       setErrorMessage("Unable to load cards. Pull to retry.");
-      setCards([]);
     } finally {
       setLoading(false);
     }
   }, [navigation]);
 
-  useEffect(() => {
-    loadCards();
-    const unsubscribe = navigation.addListener("focus", loadCards);
-    return unsubscribe;
-  }, [loadCards, navigation]);
+  // Reload every time this screen comes into focus (back-navigation included)
+  useFocusEffect(
+    useCallback(() => {
+      loadCards();
+    }, [loadCards])
+  );
 
   const handlePreview = (card) => {
     if (!card?.cardId) return;
+    // Normalize field names before passing to CardDetailsScreen so all templates render correctly
+    const normalizedCard = {
+      ...card,
+      phone: card.phone || card.phoneNumber1 || card.phoneNumber || card.mobile || '',
+      address: card.address || card.companyAddress || card.location || '',
+      whatsapp: card.whatsapp || card.whatsappUrl || '',
+      businessDescription: card.businessDescription || card.description || '',
+      businessSubCategory: card.businessSubCategory || card.businessSubcategory || '',
+    };
     navigation.navigate("CardDetailsScreen", {
       cardId: card.cardId,
-      cardData: card,
+      cardData: normalizedCard,
     });
   };
 
@@ -116,8 +132,18 @@ export default function MyCardsScreen({ navigation }) {
           {item.companyName && (
             <Text style={styles.companyName}>{item.companyName}</Text>
           )}
-          {item.phone && (
-            <Text style={styles.phoneText}>{item.phone}</Text>
+          {(item.phone || item.phoneNumber1 || item.phoneNumber) && (
+            <Text style={styles.phoneText}>
+              {item.phone || item.phoneNumber1 || item.phoneNumber}
+            </Text>
+          )}
+          {(item.companyAddress || item.address || item.location) && (
+            <View style={styles.locationRow}>
+              <Ionicons name="location-outline" size={13} color="#94A3B8" />
+              <Text style={styles.locationText} numberOfLines={1}>
+                {item.companyAddress || item.address || item.location}
+              </Text>
+            </View>
           )}
         </View>
       </TouchableOpacity>
@@ -184,7 +210,7 @@ export default function MyCardsScreen({ navigation }) {
       ) : (
         <FlatList
           data={cards}
-          keyExtractor={(item) => String(item.cardId ?? Math.random())}
+          keyExtractor={(item, index) => String(item.cardId ?? `card-${index}`)}
           renderItem={renderCard}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
@@ -275,6 +301,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#CBD5E1",
     marginTop: 2,
+  },
+
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+    gap: 4,
+  },
+
+  locationText: {
+    fontSize: 13,
+    color: "#94A3B8",
+    flex: 1,
   },
 
   actionsRow: {

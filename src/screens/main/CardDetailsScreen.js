@@ -29,6 +29,8 @@ export default function CardDetailsScreen({ route }) {
     qrCodeImage2: cardData.qrCodeImage2 || cardData.qrImage2 || cardData.qrFileId2,
     descriptionPdf: cardData.descriptionPdf || cardData.businessPdf || cardData.pdfFileId,
     clients: cardData.clients || cardData.clientList,
+    // Backend saves address as companyAddress; templates all read d.address
+    address: cardData.address || cardData.companyAddress || cardData.location,
   };
 
   return (

@@ -82,9 +82,22 @@ function InboxScreen({ navigation }) {
   const [newArrivalCount, setNewArrivalCount] = useState(0);
   const [badgeScale]                          = useState(new Animated.Value(1));
   const [savingCardId, setSavingCardId]       = useState(null);
+  const initialLoadDone = useRef(false);
+  const isFetching      = useRef(false);
 
   const { setUnreadInboxCount } = useInbox();
+<<<<<<< HEAD
   const inboxLengthRef = useRef(0);
+=======
+
+  // Reset badge + reload inbox every time this screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      setUnreadInboxCount(0);
+      loadInbox();
+    }, [setUnreadInboxCount])
+  );
+>>>>>>> 53566a4c67d29d43ac7234b4bee460f0d58a5ebc
 
   const getOrHydrateUserId = async () => {
     const stored = await AsyncStorage.getItem('loggedInUserId');
@@ -98,6 +111,7 @@ function InboxScreen({ navigation }) {
     return fetched;
   };
 
+<<<<<<< HEAD
   const loadInbox = useCallback(async () => {
     try {
       setInbox([]);
@@ -125,6 +139,8 @@ function InboxScreen({ navigation }) {
       setRefreshing(false);
     }
   }, [navigation]);
+=======
+>>>>>>> 53566a4c67d29d43ac7234b4bee460f0d58a5ebc
 
   // Reload data + reset badge every time this screen comes into focus
   useFocusEffect(
@@ -143,7 +159,11 @@ function InboxScreen({ navigation }) {
       await websocketService.connect(userId);
       unsubscribe = websocketService.subscribeToInbox((payload) => {
         const incoming = payload?.data || payload;
-        if (!incoming) return;
+        // Ignore batch payloads or items with no shareId — do a clean reload instead
+        if (!incoming || Array.isArray(incoming) || !incoming.shareId) {
+          loadInbox();
+          return;
+        }
 
         Animated.sequence([
           Animated.spring(badgeScale, { toValue: 1.2, useNativeDriver: true }),
@@ -170,6 +190,54 @@ function InboxScreen({ navigation }) {
     return () => clearInterval(interval);
   }, []);
 
+<<<<<<< HEAD
+=======
+  const loadInbox = async (forceLoading = false) => {
+    // Prevent concurrent fetches (e.g. useFocusEffect + polling interval firing together)
+    if (isFetching.current) return;
+    isFetching.current = true;
+    try {
+      // Show spinner only on first load or explicit pull-to-refresh.
+      // initialLoadDone is a ref (not state), so it always holds the latest value
+      // even when called from a stale useFocusEffect closure.
+      if (!initialLoadDone.current || forceLoading) setLoading(true);
+
+      const userId = await getOrHydrateUserId();
+      if (!userId) { navigation.replace('Login'); return; }
+
+      const { res, data } = await apiFetch(`/api/share/received`);
+      if (res.status === 401) { navigation.replace('Login'); return; }
+      // Backend may return array directly or wrapped in { data: [...] }
+      const raw = Array.isArray(data) ? data
+                : Array.isArray(data?.data) ? data.data
+                : [];
+      const sorted = [...raw].sort((a, b) => {
+        const aUnread = !a.viewedAt;
+        const bUnread = !b.viewedAt;
+        if (aUnread !== bUnread) return aUnread ? -1 : 1;
+        return new Date(b.sharedAt) - new Date(a.sharedAt);
+      });
+
+      // Merge fresh API data onto cached items so that fields the backend
+      // omits for already-viewed cards (senderFirstName, nested card object,
+      // etc.) are preserved from the previous state instead of going blank.
+      setInbox((prev) => {
+        const cache = new Map(prev.map((i) => [i.shareId, i]));
+        return sorted.map((item) => ({
+          ...(cache.get(item.shareId) || {}), // keep locally-cached fields
+          ...item,                            // overwrite with fresh API values
+        }));
+      });
+      initialLoadDone.current = true;
+    } catch {
+      // Silently preserve existing inbox data on refresh errors
+    } finally {
+      setLoading(false);
+      isFetching.current = false;
+    }
+  };
+
+>>>>>>> 53566a4c67d29d43ac7234b4bee460f0d58a5ebc
   // Open → mark viewed → navigate to card detail
   const handleOpen = useCallback(async (item) => {
     if (!item.viewedAt) {
@@ -291,7 +359,12 @@ function InboxScreen({ navigation }) {
   }, [navigation]);
 
   const renderItem = useCallback(({ item, index }) => {
+<<<<<<< HEAD
     if (!item?.card) return null;
+=======
+    // Skip malformed items that would render as a blank dark block
+    if (!item?.shareId) return null;
+>>>>>>> 53566a4c67d29d43ac7234b4bee460f0d58a5ebc
     return (
     <AnimatedCard index={index}>
       <View style={[styles.card, !item.viewedAt && styles.cardUnread]}>
@@ -332,7 +405,11 @@ function InboxScreen({ navigation }) {
         </View>
       </View>
     </AnimatedCard>
+<<<<<<< HEAD
   );
+=======
+    );
+>>>>>>> 53566a4c67d29d43ac7234b4bee460f0d58a5ebc
   }, [handleOpen, handleSaveContact, formatTime, getSenderName, handleSaveToCollection, savingCardId]);
 
   return (
@@ -353,12 +430,19 @@ function InboxScreen({ navigation }) {
         keyExtractor={(item, index) => item?.shareId?.toString() ?? String(index)}
         contentContainerStyle={[styles.listContent, inbox.length === 0 && styles.listContentEmpty]}
         showsVerticalScrollIndicator={false}
+<<<<<<< HEAD
         onRefresh={loadInbox}
         refreshing={refreshing}
         onScrollBeginDrag={() => setNewArrivalCount(0)}
         renderItem={renderItem}
         extraData={inbox}
         removeClippedSubviews={false}
+=======
+        onRefresh={() => loadInbox(true)}
+        refreshing={loading}
+        onScrollBeginDrag={() => setNewArrivalCount(0)}
+        renderItem={renderItem}
+>>>>>>> 53566a4c67d29d43ac7234b4bee460f0d58a5ebc
         initialNumToRender={10}
         maxToRenderPerBatch={8}
         windowSize={5}

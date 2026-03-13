@@ -362,7 +362,6 @@ export default function BusinessDetailsScreen({ route, navigation }) {
                   <View style={businessDetailsStyles.labelLeft}>
                     <Text style={businessDetailsStyles.label}>
                       Company Name
-                      <Text style={businessDetailsStyles.optionalLabel}> (optional)</Text>
                     </Text>
                   </View>
                   {errors.companyName && (
@@ -545,11 +544,6 @@ export default function BusinessDetailsScreen({ route, navigation }) {
                       <Text style={businessDetailsStyles.star}> *</Text>
                     </Text>
                   </View>
-                  {errors.businessDescription && (
-                    <Text style={businessDetailsStyles.errorText}>
-                      {errors.businessDescription}
-                    </Text>
-                  )}
                 </View>
                 <Animated.View style={{ transform: [{ scale: getFieldAnim('businessDescription').scale }] }}>
                   <View style={[
@@ -558,26 +552,39 @@ export default function BusinessDetailsScreen({ route, navigation }) {
                     !!form.businessDescription?.trim() && businessDetailsStyles.inputFilled,
                     focusedField === 'businessDescription' && businessDetailsStyles.inputFocused,
                     businessDetailsStyles.multilineInput,
-                    errors.businessDescription &&
-                    businessDetailsStyles.inputError,
+                    errors.businessDescription && businessDetailsStyles.inputError,
                   ]}>
                     <Animated.View style={{ transform: [{ scale: getFieldAnim('businessDescription').icon }] }}>
                       <Ionicons
                         name="document-text"
                         size={17}
-                        color={'#D4AF37'}
+                        color={errors.businessDescription ? '#EF4444' : '#D4AF37'}
                         style={[businessDetailsStyles.inputIcon, businessDetailsStyles.inputIconMultiline]}
                       />
                     </Animated.View>
                     <TextInput
-                      style={[businessDetailsStyles.inputField, businessDetailsStyles.multilineInput]}
+                      style={[
+                        businessDetailsStyles.inputField,
+                        businessDetailsStyles.multilineInput,
+                        errors.businessDescription && { color: '#EF4444' },
+                      ]}
                       placeholder="Describe your business, services, and expertise"
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={errors.businessDescription ? '#FCA5A5' : '#9CA3AF'}
                       value={form.businessDescription}
                       maxLength={500}
-                      onChangeText={(value) =>
-                        updateForm('businessDescription', value)
-                      }
+                      onChangeText={(value) => {
+                        setForm((prev) => ({ ...prev, businessDescription: value }));
+                        const trimmed = String(value || '').trim();
+                        let error = '';
+                        if (!trimmed) {
+                          error = 'Business description is required';
+                        } else if (trimmed.length < 10) {
+                          error = 'Business description must be at least 10 characters';
+                        } else if (trimmed.length > 500) {
+                          error = 'Business description cannot exceed 500 characters';
+                        }
+                        setErrors((prev) => ({ ...prev, businessDescription: error }));
+                      }}
                       multiline
                       numberOfLines={5}
                       textAlignVertical="top"
@@ -586,6 +593,14 @@ export default function BusinessDetailsScreen({ route, navigation }) {
                     />
                   </View>
                 </Animated.View>
+                {errors.businessDescription && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                    <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                    <Text style={[businessDetailsStyles.errorText, { marginLeft: 4 }]}>
+                      {errors.businessDescription}
+                    </Text>
+                  </View>
+                )}
               </View>
               </AnimatedFormItem>
 

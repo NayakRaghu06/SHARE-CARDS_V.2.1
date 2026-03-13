@@ -355,7 +355,7 @@ export default function SocialMediaScreen({ route, navigation }) {
 
           <AnimatedFormItem index={1}>
             <InputField
-              label="LinkedIn (Optional)"
+              label="LinkedIn"
               placeholder="https://linkedin.com/in/yourprofile"
               icon="logo-linkedin"
               value={formData.linkedin}
@@ -366,7 +366,7 @@ export default function SocialMediaScreen({ route, navigation }) {
 
           <AnimatedFormItem index={2}>
             <InputField
-              label="Website (Optional)"
+              label="Website"
               placeholder="Website URL"
               icon="globe-outline"
               value={formData.website}
@@ -412,7 +412,8 @@ export default function SocialMediaScreen({ route, navigation }) {
 
           <Text style={layoutStyles.sectionTitle}>Media Uploads</Text>
 
-          <AnimatedFormItem index={5}>
+          {/* DO NOT REMOVE — Profile Photo upload is required for card templates */}
+          {/* <AnimatedFormItem index={5}>
             <ProfileAvatarUpload
               label="Profile Photo"
               imageUri={formData.profilePhoto}
@@ -421,9 +422,10 @@ export default function SocialMediaScreen({ route, navigation }) {
               size={110}
               centered
             />
-          </AnimatedFormItem>
+          </AnimatedFormItem> */}
 
-          <AnimatedFormItem index={6}>
+          {/* DO NOT REMOVE — Company Logo upload is required for card templates */}
+          {/* <AnimatedFormItem index={6}>
             <LogoUploadCard
               label="Company Logo"
               imageUri={formData.companyLogo}
@@ -431,7 +433,7 @@ export default function SocialMediaScreen({ route, navigation }) {
               onRemovePress={() => handleRemoveImage('companyLogo')}
               height={120}
             />
-          </AnimatedFormItem>
+          </AnimatedFormItem> */}
 
           {/* Template selection moved to TemplatePreview after Save & Submit */}
 

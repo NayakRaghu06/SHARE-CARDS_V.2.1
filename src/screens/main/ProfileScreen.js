@@ -56,6 +56,7 @@ export default function ProfileScreen({ navigation, route }) {
     email: '',
     profileImage: null,
   });
+  const [errors, setErrors] = useState({ first: '', last: '', email: '' });
   const [loading, setLoading] = useState(true);
   const [pendingImage, setPendingImage] = useState(null);
   const fromScreen = route?.params?.fromScreen || null;
@@ -169,14 +170,40 @@ export default function ProfileScreen({ navigation, route }) {
     }
   };
 
+  const validateField = (key, value) => {
+    const v = value.trim();
+    if (key === 'first') {
+      if (!v) return 'First name is required';
+      if (!/^[a-zA-Z\s]+$/.test(v)) return 'First name can only contain letters';
+    }
+    if (key === 'last') {
+      if (!v) return 'Last name is required';
+      if (!/^[a-zA-Z\s]+$/.test(v)) return 'Last name can only contain letters';
+    }
+    if (key === 'email') {
+      if (!v) return 'Email is required';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Enter a valid email address';
+    }
+    return '';
+  };
+
   const handleEditChange = (field, value) => {
-    setEditedData({
-      ...editedData,
-      [field]: value,
-    });
+    setEditedData({ ...editedData, [field]: value });
+    if (field !== 'middle' && field !== 'phone') {
+      setErrors((prev) => ({ ...prev, [field]: validateField(field, value) }));
+    }
   };
 
   const handleSave = async () => {
+    // Validate all required fields before submitting
+    const newErrors = {
+      first: validateField('first', editedData.first),
+      last: validateField('last', editedData.last),
+      email: validateField('email', editedData.email),
+    };
+    setErrors(newErrors);
+    if (Object.values(newErrors).some((e) => e !== '')) return;
+
     try {
       const payload = {
         firstName: editedData.first,
@@ -218,6 +245,7 @@ export default function ProfileScreen({ navigation, route }) {
 
   const handleCancel = () => {
     setEditedData(profileData);
+    setErrors({ first: '', last: '', email: '' });
     setIsEditing(false);
   };
 
@@ -332,61 +360,71 @@ export default function ProfileScreen({ navigation, route }) {
             { label: 'Last Name', key: 'last', icon: 'person' },
             { label: 'Email', key: 'email', icon: 'mail' },
             { label: 'Phone', key: 'phone', icon: 'call' }
-          ].map((item, index) => (
-            <Animated.View
-              key={index}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 12,
-                borderBottomWidth: index !== 4 ? 0.5 : 0,
-                borderColor: '#E5E7EB',
-                opacity: isEditing
-                  ? editAnim
-                  : 1,
-                transform: [{
-                  translateX: isEditing
-                    ? editAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [10 + index * 2, 0],
-                      })
-                    : 0,
-                }],
-              }}
-            >
-              <Ionicons
-                name={item.icon}
-                size={18}
-                color={THEME.accent}
-                style={{ marginRight: 15 }}
-              />
-
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, color: THEME.muted }}>
-                  {item.label}
-                </Text>
-
-                {isEditing && item.key !== 'phone' ? (
-                  <TextInput
-                    style={{
-                      fontSize: 15,
-                      fontWeight: '500',
-                      marginTop: 3
-                    }}
-                    value={editedData[item.key]}
-                    onChangeText={(value) =>
-                      handleEditChange(item.key, value)
-                    }
-                    editable={item.key !== 'phone' ? true : false}
+          ].map((item, index) => {
+            const hasError = isEditing && !!errors[item.key];
+            return (
+              <Animated.View
+                key={index}
+                style={{
+                  paddingVertical: 12,
+                  borderBottomWidth: index !== 4 ? 0.5 : 0,
+                  borderColor: '#E5E7EB',
+                  opacity: isEditing ? editAnim : 1,
+                  transform: [{
+                    translateX: isEditing
+                      ? editAnim.interpolate({ inputRange: [0, 1], outputRange: [10 + index * 2, 0] })
+                      : 0,
+                  }],
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons
+                    name={hasError ? 'alert-circle' : item.icon}
+                    size={18}
+                    color={hasError ? '#EF4444' : THEME.accent}
+                    style={{ marginRight: 15 }}
                   />
-                ) : (
-                  <Text style={uiStyles.valueText}>
-                    {profileData[item.key]}
+
+                  <View style={{
+                    flex: 1,
+                    borderWidth: hasError ? 1 : 0,
+                    borderColor: hasError ? '#EF4444' : 'transparent',
+                    borderRadius: 8,
+                    paddingHorizontal: hasError ? 8 : 0,
+                    paddingVertical: hasError ? 4 : 0,
+                  }}>
+                    <Text style={{ fontSize: 12, color: hasError ? '#EF4444' : THEME.muted }}>
+                      {item.label}
+                    </Text>
+
+                    {isEditing && item.key !== 'phone' ? (
+                      <TextInput
+                        style={{
+                          fontSize: 15,
+                          fontWeight: '500',
+                          marginTop: 3,
+                          color: hasError ? '#EF4444' : THEME.text,
+                        }}
+                        value={editedData[item.key]}
+                        onChangeText={(value) => handleEditChange(item.key, value)}
+                        placeholderTextColor={hasError ? '#FCA5A5' : '#9CA3AF'}
+                      />
+                    ) : (
+                      <Text style={uiStyles.valueText}>
+                        {profileData[item.key]}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+
+                {hasError && (
+                  <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4, marginLeft: 33 }}>
+                    {errors[item.key]}
                   </Text>
                 )}
-              </View>
-            </Animated.View>
-          ))}
+              </Animated.View>
+            );
+          })}
         </View>
 
         {/* 🔥 Action Buttons */}
