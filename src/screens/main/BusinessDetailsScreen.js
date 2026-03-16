@@ -136,32 +136,39 @@ export default function BusinessDetailsScreen({ route, navigation }) {
     const newErrors = {};
     const companyName = String(form.companyName || '').trim();
     const businessCategory = String(form.businessCategory || '').trim();
-    const businessSubCategory = String(form.businessSubCategory || '').trim();
     const businessDescription = String(form.businessDescription || '').trim();
-    const companyNameAllowed = /^[A-Za-z0-9 .&'-]+$/;
 
-    if (companyName) {
-      if (companyName.length < 2) {
-        newErrors.companyName = 'Company name must be at least 2 characters';
-      } else if (!companyNameAllowed.test(companyName)) {
-        newErrors.companyName = "Company name contains invalid characters";
-      }
+    // Company Name
+    if (!companyName) {
+      newErrors.companyName = 'Company name is required.';
+    } else if (!/^[A-Za-z0-9\s]+$/.test(companyName)) {
+      newErrors.companyName = 'Company name can contain only letters and numbers.';
+    } else if (companyName.length < 2) {
+      newErrors.companyName = 'Company name must be at least 2 characters.';
+    } else if (companyName.length > 60) {
+      newErrors.companyName = 'Company name cannot exceed 60 characters.';
     }
 
-    if (businessCategory && businessCategory.length < 2) {
-      newErrors.businessCategory = 'Business category must be at least 2 characters';
+    // Business Category
+    if (!businessCategory) {
+      newErrors.businessCategory = 'Business category is required.';
+    } else if (!/^[A-Za-z\s]+$/.test(businessCategory)) {
+      newErrors.businessCategory = 'Business category can contain only alphabetic characters.';
+    } else if (businessCategory.length < 2) {
+      newErrors.businessCategory = 'Business category must be at least 2 characters.';
+    } else if (businessCategory.length > 40) {
+      newErrors.businessCategory = 'Business category cannot exceed 40 characters.';
     }
 
-    if (businessSubCategory && businessSubCategory.length < 2) {
-      newErrors.businessSubCategory = 'Business sub-category must be at least 2 characters';
-    }
-
+    // Business Description
     if (!businessDescription) {
-      newErrors.businessDescription = 'Business description is required';
+      newErrors.businessDescription = 'Business description is required.';
+    } else if (!/^[a-zA-Z0-9\s@#&*/".,\-()]*$/.test(businessDescription)) {
+      newErrors.businessDescription = 'Business description contains invalid special characters.';
     } else if (businessDescription.length < 10) {
-      newErrors.businessDescription = 'Business description must be at least 10 characters';
-    } else if (businessDescription.length > 500) {
-      newErrors.businessDescription = 'Business description cannot exceed 500 characters';
+      newErrors.businessDescription = 'Business description must be at least 10 characters.';
+    } else if (businessDescription.length > 250) {
+      newErrors.businessDescription = 'Business description cannot exceed 250 characters.';
     }
 
     setErrors(newErrors);
@@ -391,7 +398,16 @@ export default function BusinessDetailsScreen({ route, navigation }) {
                       placeholder="Enter your company name"
                       placeholderTextColor="#9CA3AF"
                       value={form.companyName}
-                      onChangeText={(value) => updateForm('companyName', value)}
+                      maxLength={60}
+                      onChangeText={(value) => {
+                        const cleaned = value.replace(/[^a-zA-Z0-9\s]/g, '').replace(/^\s/, '').replace(/\s{2,}/g, ' ').slice(0, 60);
+                        setForm((prev) => ({ ...prev, companyName: cleaned }));
+                        const trimmed = cleaned.trim();
+                        let error = '';
+                        if (!trimmed) error = 'Company name is required.';
+                        else if (trimmed.length < 2) error = 'Company name must be at least 2 characters.';
+                        setErrors((prev) => ({ ...prev, companyName: error }));
+                      }}
                       onFocus={() => handleFocusAnim('companyName')}
                       onBlur={() => handleBlurAnim('companyName')}
                     />
@@ -436,9 +452,16 @@ export default function BusinessDetailsScreen({ route, navigation }) {
                     placeholder="e.g., Technology, Finance"
                     placeholderTextColor="#9CA3AF"
                     value={form.businessCategory}
-                    onChangeText={(value) =>
-                      updateForm('businessCategory', value)
-                    }
+                    maxLength={40}
+                    onChangeText={(value) => {
+                      const cleaned = value.replace(/[^a-zA-Z\s]/g, '').replace(/^\s/, '').replace(/\s{2,}/g, ' ').slice(0, 40);
+                      setForm((prev) => ({ ...prev, businessCategory: cleaned }));
+                      const trimmed = cleaned.trim();
+                      let error = '';
+                      if (!trimmed) error = 'Business category is required.';
+                      else if (trimmed.length < 2) error = 'Business category must be at least 2 characters.';
+                      setErrors((prev) => ({ ...prev, businessCategory: error }));
+                    }}
                     onFocus={() => handleFocusAnim('businessCategory')}
                     onBlur={() => handleBlurAnim('businessCategory')}
                   />
@@ -571,17 +594,21 @@ export default function BusinessDetailsScreen({ route, navigation }) {
                       placeholder="Describe your business, services, and expertise"
                       placeholderTextColor={errors.businessDescription ? '#FCA5A5' : '#9CA3AF'}
                       value={form.businessDescription}
-                      maxLength={500}
+                      maxLength={250}
                       onChangeText={(value) => {
-                        setForm((prev) => ({ ...prev, businessDescription: value }));
-                        const trimmed = String(value || '').trim();
+                        const filtered = value.replace(/[^a-zA-Z0-9\s@#&*/".,\-()]/g, '');
+                        const cleaned = filtered.slice(0, 250);
+                        setForm((prev) => ({ ...prev, businessDescription: cleaned }));
+                        const trimmed = cleaned.trim();
                         let error = '';
-                        if (!trimmed) {
-                          error = 'Business description is required';
+                        if (value !== filtered) {
+                          error = 'Business description contains invalid special characters.';
+                        } else if (!trimmed) {
+                          error = 'Business description is required.';
                         } else if (trimmed.length < 10) {
-                          error = 'Business description must be at least 10 characters';
-                        } else if (trimmed.length > 500) {
-                          error = 'Business description cannot exceed 500 characters';
+                          error = 'Business description must be at least 10 characters.';
+                        } else if (trimmed.length > 250) {
+                          error = 'Business description cannot exceed 250 characters.';
                         }
                         setErrors((prev) => ({ ...prev, businessDescription: error }));
                       }}

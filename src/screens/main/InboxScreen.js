@@ -137,14 +137,12 @@ function InboxScreen({ navigation }) {
     }
   }, [navigation]);
 
-  // Load once on first focus; subsequent focuses only reset the badge
+  // Reload inbox every time screen gains focus (e.g. returning from card preview)
   useFocusEffect(
     useCallback(() => {
       setUnreadInboxCount(0);
-      if (!initialLoadDone.current) {
-        loadInbox();
-      }
-    }, []) // eslint-disable-line react-hooks/exhaustive-deps
+      loadInbox();
+    }, [loadInbox])
   );
 
   // Real-time inbox via WebSocket

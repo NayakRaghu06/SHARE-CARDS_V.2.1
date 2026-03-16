@@ -27,43 +27,26 @@ const validations = {
     lettersOnly: true,
     maxLength: 50,
     required: true,
-    message: 'Name must contain only letters and spaces',
   },
   phone: {
     exactLength: 10,
     numbersOnly: true,
     startsWith: ['6', '7', '8', '9'],
     required: true,
-    message: 'Enter a valid 10-digit phone number',
   },
   email: {
     required: false,
     emailFormat: true,
-    message: 'Enter a valid email address',
   },
   designation: {
     required: true,
+    lettersOnly: true,
     maxLength: 40,
-    message: 'Designation cannot exceed 40 characters',
   },
   address: {
     required: true,
     minLength: 5,
-    message: 'Address must be at least 5 characters',
-  },
-};
-
-// Validation helper functions
-const validate = {
-  name: (value) => {
-    if (!value.trim()) return false;
-    return /^[a-zA-Z\s]{2,}$/.test(value.trim());
-  },
-  phone: (value) => {
-    return /^[0-9]{10}$/.test(value.replace(/\D/g, ''));
-  },
-  email: (value) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    maxLength: 100,
   },
 };
 
@@ -135,33 +118,21 @@ export default function PersonalDetailsScreen({ navigation }) {
       if (name === 'name') return 'Name is required';
       if (name === 'designation') return 'Designation is required';
       if (name === 'phone') return 'Enter a valid 10-digit phone number';
-      if (name === 'address') return 'Address must be at least 5 characters';
+      if (name === 'address') return 'Address is required.';
       return `${name} is required`;
     }
-    if (!rule.required && !trimmed) {
-      return '';
-    }
+    if (!rule.required && !trimmed) return '';
 
     if (name === 'name') {
-      if (trimmed.length < rule.minLength) {
-        return 'Name must be at least 2 characters';
-      }
-      if (trimmed.length > rule.maxLength) {
-        return 'Name cannot exceed 50 characters';
-      }
-      if (!/^[A-Za-z\s]+$/.test(trimmed)) {
-        return 'Name must contain only letters and spaces';
-      }
+      if (!/^[A-Za-z\s]+$/.test(trimmed)) return 'Name can contain only alphabetic characters.';
+      if (trimmed.length < rule.minLength) return 'Name must be at least 2 characters';
+      if (trimmed.length > rule.maxLength) return 'Name cannot exceed 50 characters.';
     }
 
     if (name === 'phone') {
       const digits = String(value || '').replace(/\D/g, '');
-      if (!/^\d{10}$/.test(digits)) {
-        return 'Enter a valid 10-digit phone number';
-      }
-      if (!/^[6789]/.test(digits)) {
-        return 'Enter a valid 10-digit phone number';
-      }
+      if (digits.length < 10) return 'Enter a valid 10-digit phone number';
+      if (!/^[6789]/.test(digits)) return 'Enter a valid 10-digit phone number';
     }
 
     if (name === 'email') {
@@ -171,15 +142,15 @@ export default function PersonalDetailsScreen({ navigation }) {
     }
 
     if (name === 'designation') {
-      if (String(value || '').length > rule.maxLength) {
-        return 'Designation cannot exceed 40 characters';
-      }
+      if (!/^[A-Za-z\s]+$/.test(trimmed)) return 'Designation can contain only alphabetic characters.';
+      if (trimmed.length < 2) return 'Designation must be at least 2 characters';
+      if (trimmed.length > rule.maxLength) return 'Designation cannot exceed 40 characters.';
     }
 
     if (name === 'address') {
-      if (trimmed.length < rule.minLength) {
-        return 'Address must be at least 5 characters';
-      }
+      if (!/^[a-zA-Z0-9\s@#&*.,\-]*$/.test(value)) return 'Only @ # & * . , - special characters are allowed in Address.';
+      if (trimmed.length < rule.minLength) return 'Address must be at least 5 characters long.';
+      if (trimmed.length > rule.maxLength) return 'Address cannot exceed 100 characters.';
     }
 
     return '';
@@ -188,15 +159,30 @@ export default function PersonalDetailsScreen({ navigation }) {
   // Handle field change
   const handleFieldChange = (name, value) => {
     let cleanedValue = value;
+    let error = '';
+
     if (name === 'name') {
-      cleanedValue = value.replace(/[^a-zA-Z\s]/g, '').slice(0, 50);
+      cleanedValue = value.replace(/[^a-zA-Z\s]/g, '').replace(/^\s/, '').replace(/\s{2,}/g, ' ').slice(0, 50);
+      error = validateField('name', cleanedValue);
     } else if (name === 'phone') {
       cleanedValue = value.replace(/\D/g, '').slice(0, 10);
+      error = validateField('phone', cleanedValue);
     } else if (name === 'designation') {
-      cleanedValue = value.slice(0, 40);
+      cleanedValue = value.replace(/[^a-zA-Z\s]/g, '').replace(/^\s/, '').replace(/\s{2,}/g, ' ').slice(0, 40);
+      error = validateField('designation', cleanedValue);
+    } else if (name === 'address') {
+      const filtered = value.replace(/[^a-zA-Z0-9\s@#&*.,\-]/g, '');
+      cleanedValue = filtered.slice(0, 100);
+      if (value !== filtered) {
+        error = 'Only @ # & * . , - special characters are allowed in Address.';
+      } else {
+        error = validateField('address', cleanedValue);
+      }
+    } else {
+      error = validateField(name, cleanedValue);
     }
+
     setFormData((prev) => ({ ...prev, [name]: cleanedValue }));
-    const error = validateField(name, cleanedValue);
     setErrors((prev) => ({ ...prev, [name]: error }));
   };
 
@@ -348,6 +334,7 @@ export default function PersonalDetailsScreen({ navigation }) {
                 placeholder="Enter address"
                 icon="location"
                 multiline
+                maxLength={100}
                 value={formData.address}
                 onChangeText={(text) => handleFieldChange('address', text)}
                 error={errors.address}

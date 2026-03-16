@@ -32,6 +32,7 @@ export const readPhoneContacts = async () => {
         const cleanedPhone = phoneNumber.replace(/\D/g, '').slice(-10);
 
         return {
+          id: contact.id,
           name: contact.name || 'Unknown',
           phone: cleanedPhone,
         };

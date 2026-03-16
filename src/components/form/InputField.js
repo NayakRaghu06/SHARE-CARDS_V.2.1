@@ -16,6 +16,7 @@ export default function InputField({
   error,
   rightButton,
   editable = true,
+  maxLength,
 }) {
   const [isFocused, setIsFocused] = useState(false);
 
@@ -100,6 +101,7 @@ export default function InputField({
           value={value}
           onChangeText={onChangeText}
           editable={editable}
+          maxLength={maxLength}
           onFocus={handleFocus}
           onBlur={handleBlur}
         />

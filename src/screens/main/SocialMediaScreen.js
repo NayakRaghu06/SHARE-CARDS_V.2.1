@@ -150,8 +150,10 @@ export default function SocialMediaScreen({ route, navigation }) {
     }
 
     if (name === 'linkedin') {
-      if (!/^(https?:\/\/)?(www\.)?linkedin\.com\/.*$/i.test(value.trim())) {
-        return 'Enter a valid LinkedIn profile URL';
+      const v = value.trim();
+      if (v.length > 200) return 'LinkedIn URL cannot exceed 200 characters.';
+      if (!/^https?:\/\/(www\.)?linkedin\.com\/(in|company)\/[A-Za-z0-9\-_.%]+\/?$/i.test(v)) {
+        return 'Enter a valid LinkedIn profile URL.';
       }
     }
 
@@ -168,8 +170,10 @@ export default function SocialMediaScreen({ route, navigation }) {
     }
 
     if (name === 'website') {
-      if (!/^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w\-./?%&=]*)?$/i.test(value.trim())) {
-        return 'Enter a valid website URL';
+      const v = value.trim();
+      if (v.length > 200) return 'Website URL cannot exceed 200 characters.';
+      if (!/^(https?:\/\/|www\.)([\w-]+\.)+[\w-]{2,}(\/[^\s]*)?$/i.test(v)) {
+        return 'Enter a valid website URL.';
       }
     }
 
@@ -185,6 +189,10 @@ export default function SocialMediaScreen({ route, navigation }) {
       cleanedValue = value.replace(/\s/g, '');
     } else if (name === 'twitter') {
       cleanedValue = value.replace(/\s/g, '').slice(0, 16);
+    } else if (name === 'linkedin') {
+      cleanedValue = value.replace(/\s/g, '').slice(0, 200);
+    } else if (name === 'website') {
+      cleanedValue = value.replace(/\s/g, '').slice(0, 200);
     }
 
     setFormData((prev) => ({ ...prev, [name]: cleanedValue }));
@@ -361,6 +369,7 @@ export default function SocialMediaScreen({ route, navigation }) {
               value={formData.linkedin}
               onChangeText={(text) => handleFieldChange('linkedin', text)}
               error={errors.linkedin}
+              maxLength={200}
             />
           </AnimatedFormItem>
 
@@ -373,6 +382,7 @@ export default function SocialMediaScreen({ route, navigation }) {
               onChangeText={(text) => handleFieldChange('website', text)}
               error={errors.website}
               keyboardType="url"
+              maxLength={200}
             />
           </AnimatedFormItem>
 

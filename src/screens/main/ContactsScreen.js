@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import * as Contacts from 'expo-contacts';
 import {
   View,
   Text,
@@ -64,25 +65,58 @@ export default function ContactsScreen({ navigation }) {
     }
   };
 
-  const handleAddContact = () => {
-    if (!newContact.name.trim() || !newContact.phone.trim()) {
-      Alert.alert('Error', 'Please fill in name and phone number');
+  const handleAddContact = async () => {
+    const cleanPhone = newContact.phone.replace(/\D/g, '');
+    if (!newContact.name.trim()) {
+      Alert.alert('Error', 'Please enter a name');
       return;
     }
-    const updatedContacts = [
-      ...contacts,
-      { name: newContact.name, phone: newContact.phone, email: newContact.email, isDBCUser: false, dbcUser: null },
-    ];
-    setContacts(updatedContacts);
-    setNewContact({ name: '', phone: '', email: '' });
-    setIsAddingContact(false);
-    Alert.alert('Success', 'Contact added successfully');
+    if (cleanPhone.length !== 10) {
+      Alert.alert('Error', 'Please enter a valid 10-digit phone number');
+      return;
+    }
+
+    try {
+      const hasPermission = await requestContactPermission();
+      if (!hasPermission) {
+        Alert.alert('Permission Required', 'Contact permission is needed to add contact.');
+        return;
+      }
+
+      await Contacts.addContactAsync({
+        firstName: newContact.name.trim(),
+        phoneNumbers: [{ label: 'mobile', number: cleanPhone }],
+        emails: newContact.email.trim()
+          ? [{ label: 'work', email: newContact.email.trim() }]
+          : [],
+      });
+
+      setNewContact({ name: '', phone: '', email: '' });
+      setIsAddingContact(false);
+      Alert.alert('Success', 'Contact added successfully');
+      loadContacts();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add contact');
+    }
   };
 
-  const handleDeleteContact = (phone) => {
-    Alert.alert('Delete Contact', 'Are you sure?', [
+  const handleDeleteContact = (contactId, phone) => {
+    Alert.alert('Delete Contact', 'Are you sure you want to delete this contact?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', onPress: () => setContacts(contacts.filter(c => c.phone !== phone)), style: 'destructive' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            if (contactId) {
+              await Contacts.removeContactAsync(contactId);
+            }
+            setContacts((prev) => prev.filter((c) => c.phone !== phone));
+          } catch (error) {
+            Alert.alert('Error', 'Failed to delete contact');
+          }
+        },
+      },
     ]);
   };
 
@@ -244,7 +278,7 @@ export default function ContactsScreen({ navigation }) {
                     {/* Delete */}
                     <TouchableOpacity
                       style={S.deleteBtn}
-                      onPress={() => handleDeleteContact(contact.phone)}
+                      onPress={() => handleDeleteContact(contact.id, contact.phone)}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
                       <Ionicons name="trash-outline" size={16} color="#EF4444" />
@@ -286,7 +320,7 @@ export default function ContactsScreen({ navigation }) {
                     {/* Delete */}
                     <TouchableOpacity
                       style={S.deleteBtn}
-                      onPress={() => handleDeleteContact(contact.phone)}
+                      onPress={() => handleDeleteContact(contact.id, contact.phone)}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
                       <Ionicons name="trash-outline" size={16} color="#EF4444" />

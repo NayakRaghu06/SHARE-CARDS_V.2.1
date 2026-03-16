@@ -31,6 +31,7 @@ export default function LoginScreen({ navigation, route }) {
   const [canResend, setCanResend]   = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifying, setVerifying]   = useState(false);
+  const [phoneError, setPhoneError] = useState('');
 
   const inputs = useRef([]);
 
@@ -70,7 +71,11 @@ export default function LoginScreen({ navigation, route }) {
   const handlePhoneChange = (text) => {
     const cleaned = text.replace(/\D/g, '').slice(0, 10);
     setPhone(cleaned);
-    // Reset OTP flow if user edits the number
+    if (cleaned.length === 10 && !validPhone(cleaned)) {
+      setPhoneError('Enter a valid 10-digit number starting with 6, 7, 8, or 9.');
+    } else {
+      setPhoneError('');
+    }
     if (otpSent) {
       setOtpSent(false);
       setOtp(Array(OTP_LENGTH).fill(''));
@@ -79,7 +84,7 @@ export default function LoginScreen({ navigation, route }) {
     }
   };
 
-  const validPhone = (v) => /^[1-9]\d{9}$/.test(v);
+  const validPhone = (v) => /^[6-9]\d{9}$/.test(v);
   const shouldShowSignupPrompt = (res, data) => {
     const msg = String(data?.message || '').toLowerCase();
     return (
@@ -135,9 +140,10 @@ export default function LoginScreen({ navigation, route }) {
   // ── Send OTP ─────────────────────────────────────────────────────────────────
   const handleSendOtp = async () => {
     if (!validPhone(phone)) {
-      Alert.alert('Invalid Number', 'Please enter a valid 10-digit mobile number.');
+      setPhoneError('Enter a valid 10-digit number starting with 6, 7, 8, or 9.');
       return;
     }
+    setPhoneError('');
     // Wipe any stale session BEFORE the OTP request so the server
     // creates a fresh session for this user — not the previous user's session
     try { await AsyncStorage.removeItem('sessionCookie'); } catch {}
@@ -319,6 +325,7 @@ export default function LoginScreen({ navigation, route }) {
                 showCountry
                 countryCode="+91"
                 editable={!verifying}
+                error={phoneError}
               />
 
               {/* Send OTP Button */}

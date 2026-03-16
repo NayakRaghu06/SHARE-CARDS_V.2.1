@@ -103,6 +103,7 @@ export default function SignupScreen({ navigation, route }) {
   const [verifyPhone, setVerifyPhone]     = useState(false);
   const [verifyEmail, setVerifyEmail]     = useState(false);
   const [submitting, setSubmitting]       = useState(false);
+  const [emailUppercase, setEmailUppercase] = useState(false);
 
   // ── Timers ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -133,23 +134,72 @@ export default function SignupScreen({ navigation, route }) {
   }, [emailState]);
 
   // ── Validation ───────────────────────────────────────────────────────────────
-  const validPhone = v => /^[1-9]\d{9}$/.test(v);
-  const validEmail = v => /^\S+@\S+\.\S+$/.test(v);
+  const FIRST_NAME_MIN = 4;
+  const FIRST_NAME_MAX = 20;
+  const EMAIL_UI_MAX = 50;
+  const EMAIL_SUBMIT_MAX = 254;
+  const validPhone = v => /^[6-9]\d{9}$/.test(v);
+  const emailPattern = /^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+  const validEmail = value => emailPattern.test((value || '').trim());
+
+  const sanitizeEmailInput = input => {
+    const filtered = (input || '').replace(/[^A-Za-z0-9@._-]/g, '');
+    const lower = filtered.toLowerCase();
+    const atIndex = lower.indexOf('@');
+    if (atIndex === -1) return lower.slice(0, EMAIL_UI_MAX);
+    const beforeAt = lower.slice(0, atIndex + 1);
+    const afterAt = lower.slice(atIndex + 1).replace(/@/g, '');
+    return (beforeAt + afterAt).slice(0, EMAIL_UI_MAX);
+  };
+
+  const trimmedEmail = form.email.trim();
+  const isEmailAtUiLimit = form.email.length >= EMAIL_UI_MAX;
+  const isEmailTooLong = trimmedEmail.length > EMAIL_SUBMIT_MAX;
+  const emailLimitError = isEmailAtUiLimit ? `Email cannot exceed ${EMAIL_UI_MAX} characters` : '';
+  const emailValidationError =
+    trimmedEmail && !validEmail(trimmedEmail) ? 'Please enter a valid email address' : '';
+  const emailUppercaseError = emailUppercase ? 'Email cannot contain uppercase letters' : '';
+  const emailFieldError = errors.email || emailLimitError || emailUppercaseError || emailValidationError;
+
+  const handleFirstNameChange = (text) => {
+    const filtered = text.replace(/[^A-Za-z ]/g, '');
+    const limited = filtered.slice(0, FIRST_NAME_MAX);
+    setForm(p => ({ ...p, first: limited }));
+    if (errors.first) setErrors(p => ({ ...p, first: '' }));
+  };
+
+  const handleMiddleNameChange = (text) => {
+    const filtered = text.replace(/[^A-Za-z ]/g, '');
+    const limited = filtered.slice(0, 15);
+    setForm(p => ({ ...p, middle: limited }));
+    if (errors.middle) setErrors(p => ({ ...p, middle: '' }));
+  };
 
   const handleChange = (name, value) => {
     let clean = value;
-    if (name === 'first' || name === 'middle') clean = value.replace(/[^A-Za-z]/g, '').slice(0, 15);
     if (name === 'last') clean = value.replace(/[^A-Za-z ]/g, '').slice(0, 10);
-    if (name === 'phone') clean = value.replace(/\D/g, '').slice(0, 10);
+    if (name === 'phone') {
+      clean = value.replace(/\D/g, '').slice(0, 10);
+      if (clean.length === 10 && !validPhone(clean)) {
+        setErrors(p => ({ ...p, phone: 'Enter a valid 10-digit number starting with 6, 7, 8, or 9.' }));
+      } else {
+        setErrors(p => ({ ...p, phone: '' }));
+      }
+    }
+    if (name === 'email') {
+      const hasUppercase = /[A-Z]/.test(value);
+      setEmailUppercase(hasUppercase);
+      clean = sanitizeEmailInput(value);
+    }
     if (name === 'otpPhone' || name === 'otpEmail') clean = value.replace(/\D/g, '').slice(0, 6);
     setForm(p => ({ ...p, [name]: clean }));
-    if (errors[name]) setErrors(p => ({ ...p, [name]: '' }));
+    if (name !== 'phone' && errors[name]) setErrors(p => ({ ...p, [name]: '' }));
   };
 
   // ── Send Phone OTP ───────────────────────────────────────────────────────────
   const sendPhoneOtp = async () => {
     if (!validPhone(form.phone)) {
-      setErrors(p => ({ ...p, phone: 'Enter valid 10 digit number' }));
+      setErrors(p => ({ ...p, phone: 'Enter a valid 10-digit number starting with 6, 7, 8, or 9.' }));
       return;
     }
     setLoadingPhone(true);
@@ -174,11 +224,19 @@ export default function SignupScreen({ navigation, route }) {
 
   // ── Send Email OTP ───────────────────────────────────────────────────────────
   const sendEmailOtp = async () => {
-    if (!form.email.trim()) {
+    const emailValue = form.email.trim();
+    if (!emailValue) {
       setErrors(p => ({ ...p, email: 'Please enter your email address' }));
       return;
     }
-    if (!validEmail(form.email)) {
+    if (emailUppercase) {
+      return;
+    }
+    if (emailValue.length > EMAIL_SUBMIT_MAX) {
+      setErrors(p => ({ ...p, email: `Email cannot exceed ${EMAIL_SUBMIT_MAX} characters` }));
+      return;
+    }
+    if (!validEmail(emailValue)) {
       setErrors(p => ({ ...p, email: 'Please enter a valid email address' }));
       return;
     }
@@ -186,7 +244,7 @@ export default function SignupScreen({ navigation, route }) {
     try {
       const { res, data } = await apiFetch('/auth/send-email-otp', {
         method: 'POST',
-        body: JSON.stringify({ email: form.email.trim() }),
+        body: JSON.stringify({ email: emailValue }),
       });
       if (res.ok && data?.status === 1) {
         setEmailState('sent');
@@ -215,6 +273,7 @@ export default function SignupScreen({ navigation, route }) {
     setTimerEmail(0);
     setForm(p => ({ ...p, otpEmail: '' }));
     setErrors(p => ({ ...p, email: '' }));
+    setEmailUppercase(false);
   };
 
   // ── Verify Phone OTP ─────────────────────────────────────────────────────────
@@ -266,12 +325,18 @@ export default function SignupScreen({ navigation, route }) {
 
   // ── Submit ───────────────────────────────────────────────────────────────────
   const canSubmit =
-    form.first.length >= 2 &&
+    form.first.trim().length >= FIRST_NAME_MIN &&
     form.last.length >= 2 &&
     phoneState === 'verified' &&
-    emailState === 'verified';
+    emailState === 'verified' &&
+    !isEmailTooLong &&
+    !emailUppercase;
 
   const handleSubmit = async () => {
+    if (form.first.trim().length < FIRST_NAME_MIN) {
+      setErrors(p => ({ ...p, first: `First name must be at least ${FIRST_NAME_MIN} characters` }));
+      return;
+    }
     if (!canSubmit) return;
     setSubmitting(true);
     try {
@@ -326,7 +391,7 @@ export default function SignupScreen({ navigation, route }) {
     return {
       label: loadingEmail ? 'Sending...' : 'Send OTP',
       onPress: sendEmailOtp,
-      disabled: !validEmail(form.email) || loadingEmail,
+      disabled: !validEmail(form.email) || loadingEmail || isEmailTooLong || emailUppercase,
     };
   };
 
@@ -366,7 +431,7 @@ export default function SignupScreen({ navigation, route }) {
                 icon="person-outline"
                 placeholder="Enter first name"
                 value={form.first}
-                onChangeText={v => handleChange('first', v)}
+                onChangeText={handleFirstNameChange}
                 error={errors.first}
               />
 
@@ -451,10 +516,11 @@ export default function SignupScreen({ navigation, route }) {
                 icon="mail-outline"
                 placeholder="Enter email address"
                 keyboardType="email-address"
+                maxLength={EMAIL_UI_MAX}
                 value={form.email}
                 onChangeText={v => handleChange('email', v)}
                 editable={emailState === 'idle'}
-                error={errors.email}
+                error={emailFieldError}
                 rightButton={emailRightButton()}
               />
 

@@ -54,7 +54,10 @@ export default function RecipientDetailsScreen({ navigation, route }) {
     let valid = true;
 
     if (!recipientName.trim()) {
-      newErrors.name = 'Please enter recipient name';
+      newErrors.name = 'Please enter recipient name.';
+      valid = false;
+    } else if (!/^[a-zA-Z\s]+$/.test(recipientName.trim())) {
+      newErrors.name = 'Please enter a valid name. Special characters and numbers are not allowed.';
       valid = false;
     }
     if (!mobile || mobile.length !== 10) {
@@ -194,8 +197,13 @@ export default function RecipientDetailsScreen({ navigation, route }) {
             placeholderTextColor="#aaa"
             value={recipientName}
             onChangeText={(t) => {
-              setRecipientName(t);
-              if (errors.name) setErrors((prev) => ({ ...prev, name: '' }));
+              const cleaned = t.replace(/[^a-zA-Z\s]/g, '').replace(/^\s/, '').replace(/\s{2,}/g, ' ');
+              setRecipientName(cleaned);
+              if (cleaned !== t) {
+                setErrors((prev) => ({ ...prev, name: 'Please enter a valid name. Special characters and numbers are not allowed.' }));
+              } else if (errors.name) {
+                setErrors((prev) => ({ ...prev, name: '' }));
+              }
             }}
             autoCapitalize="words"
             returnKeyType="next"

@@ -56,7 +56,7 @@ export default function ProfileScreen({ navigation, route }) {
     email: '',
     profileImage: null,
   });
-  const [errors, setErrors] = useState({ first: '', last: '', email: '' });
+  const [errors, setErrors] = useState({ first: '', middle: '', last: '', email: '' });
   const [loading, setLoading] = useState(true);
   const [pendingImage, setPendingImage] = useState(null);
   const fromScreen = route?.params?.fromScreen || null;
@@ -171,26 +171,43 @@ export default function ProfileScreen({ navigation, route }) {
   };
 
   const validateField = (key, value) => {
-    const v = value.trim();
+    const v = String(value || '').trim();
     if (key === 'first') {
-      if (!v) return 'First name is required';
-      if (!/^[a-zA-Z\s]+$/.test(v)) return 'First name can only contain letters';
+      if (!v) return 'First name is required.';
+      if (!/^[a-zA-Z\s]+$/.test(v)) return 'First name can contain only alphabetic characters.';
+      if (v.length < 2) return 'First name must be at least 2 characters.';
+      if (v.length > 30) return 'First name cannot exceed 30 characters.';
+    }
+    if (key === 'middle') {
+      if (v) {
+        if (!/^[a-zA-Z\s]+$/.test(v)) return 'Middle name can contain only alphabetic characters.';
+        if (v.length > 30) return 'Middle name cannot exceed 30 characters.';
+      }
     }
     if (key === 'last') {
-      if (!v) return 'Last name is required';
-      if (!/^[a-zA-Z\s]+$/.test(v)) return 'Last name can only contain letters';
+      if (!v) return 'Last name is required.';
+      if (!/^[a-zA-Z\s]+$/.test(v)) return 'Last name can contain only alphabetic characters.';
+      if (v.length < 2) return 'Last name must be at least 2 characters.';
+      if (v.length > 30) return 'Last name cannot exceed 30 characters.';
     }
     if (key === 'email') {
-      if (!v) return 'Email is required';
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Enter a valid email address';
+      if (!v) return 'Email is required.';
+      if (v.length > 100) return 'Email cannot exceed 100 characters.';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Enter a valid email address.';
     }
     return '';
   };
 
   const handleEditChange = (field, value) => {
-    setEditedData({ ...editedData, [field]: value });
-    if (field !== 'middle' && field !== 'phone') {
-      setErrors((prev) => ({ ...prev, [field]: validateField(field, value) }));
+    let cleanedValue = value;
+    if (field === 'first' || field === 'last' || field === 'middle') {
+      cleanedValue = value.replace(/[^a-zA-Z\s]/g, '').replace(/^\s/, '').replace(/\s{2,}/g, ' ').slice(0, 30);
+    } else if (field === 'email') {
+      cleanedValue = value.replace(/\s/g, '').slice(0, 100);
+    }
+    setEditedData({ ...editedData, [field]: cleanedValue });
+    if (field !== 'phone') {
+      setErrors((prev) => ({ ...prev, [field]: validateField(field, cleanedValue) }));
     }
   };
 
@@ -198,6 +215,7 @@ export default function ProfileScreen({ navigation, route }) {
     // Validate all required fields before submitting
     const newErrors = {
       first: validateField('first', editedData.first),
+      middle: validateField('middle', editedData.middle),
       last: validateField('last', editedData.last),
       email: validateField('email', editedData.email),
     };
@@ -245,11 +263,22 @@ export default function ProfileScreen({ navigation, route }) {
 
   const handleCancel = () => {
     setEditedData(profileData);
-    setErrors({ first: '', last: '', email: '' });
+    setErrors({ first: '', middle: '', last: '', email: '' });
     setIsEditing(false);
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
+    Alert.alert(
+      'Confirm Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Logout', style: 'destructive', onPress: performLogout },
+      ]
+    );
+  };
+
+  const performLogout = async () => {
     // Step 1: disconnect websocket
     try { await websocketService.disconnect(); } catch {}
 
@@ -409,6 +438,10 @@ export default function ProfileScreen({ navigation, route }) {
                         value={editedData[item.key]}
                         onChangeText={(value) => handleEditChange(item.key, value)}
                         placeholderTextColor={hasError ? '#FCA5A5' : '#9CA3AF'}
+                        maxLength={item.key === 'email' ? 100 : 30}
+                        autoCapitalize={item.key === 'email' ? 'none' : 'words'}
+                        autoCorrect={false}
+                        keyboardType={item.key === 'email' ? 'email-address' : 'default'}
                       />
                     ) : (
                       <Text style={uiStyles.valueText}>
